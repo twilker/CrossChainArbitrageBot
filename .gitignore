@@ -1,0 +1,12 @@
+**/bin/**
+**/obj/**
+**/.idea/**
+**/.vs/**
+**/target/**
+**/PublishProfiles/**
+launchSettings.json
+TestResults.xml
+*.csproj.user
+*.sln.DotSettings
+*.bat
+nuget.config
