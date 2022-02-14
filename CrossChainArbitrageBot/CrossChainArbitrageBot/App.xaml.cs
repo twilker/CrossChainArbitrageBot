@@ -1,5 +1,8 @@
 ﻿using Agents.Net;
 using Autofac;
+using CrossChainArbitrageBot.Messages;
+using Nethereum.Web3;
+using Nethereum.Web3.Accounts;
 using Serilog;
 using Serilog.Formatting.Compact;
 using System;
@@ -56,7 +59,22 @@ namespace CrossChainArbitrageBot
             mainWindow.Show();
 
             //Declare MainWindow as Message
-            //messageBoard.Publish(new MainWindowCreated(mainWindow));
+            messageBoard.Publish(new MainWindowCreated(mainWindow));
+
+            LoadChainsAndAbis(messageBoard);
+        }
+
+        private void LoadChainsAndAbis(IMessageBoard messageBoard)
+        {
+            Web3 bscConnector = new Web3(url: ConfigurationManager.AppSettings["BscHttpApi"],
+                account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+            Dictionary<string, string> abis = new Dictionary<string, string>
+            {
+                {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
+                {"Pair", File.ReadAllText("./Abis/Pair.json") },
+                {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
+            };
+            messageBoard.Publish(new BlockchainConnected(BlockchainName.Bsc, bscConnector, abis));
         }
 
         private void ConfigureLogging()

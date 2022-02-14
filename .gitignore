@@ -10,3 +10,4 @@ TestResults.xml
 *.sln.DotSettings
 *.bat
 nuget.config
+App.config
