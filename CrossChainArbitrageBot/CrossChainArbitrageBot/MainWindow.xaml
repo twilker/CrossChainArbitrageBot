@@ -4,6 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CrossChainArbitrageBot"
+        xmlns:viewModel="clr-namespace:CrossChainArbitrageBot.ViewModel"
+        d:DataContext="{d:DesignInstance viewModel:WindowViewModel}"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
@@ -13,10 +15,72 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Image Source="Images/bnb-logo.png" HorizontalAlignment="Center" 
                Grid.Row="0" Grid.Column="0" Width="100" Height="100"/>
         <Image Source="Images/avax-logo.png" HorizontalAlignment="Center"
                Grid.Row="0" Grid.Column="1" Width="100" Height="100"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" FontSize="20" 
+                   Margin="0,10,0,10"
+                   Text="{Binding Spread, StringFormat={}{0:F2}%}"
+                   HorizontalAlignment="Center"/>
+        <TextBlock Grid.Row="2" Grid.Column="0"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Price: {1:F2}$">
+                    <Binding Path="BscUnstableToken"/>
+                    <Binding Path="BscUnstablePrice"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock Grid.Row="2" Grid.Column="1"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Price: {1:F2}$">
+                    <Binding Path="AvalancheUnstableToken"/>
+                    <Binding Path="AvalancheUnstablePrice"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock Grid.Row="3" Grid.Column="0"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                    <Binding Path="BscUnstableToken"/>
+                    <Binding Path="BscUnstableAmount"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock Grid.Row="3" Grid.Column="1"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                    <Binding Path="AvalancheUnstableToken"/>
+                    <Binding Path="AvalancheUnstableAmount"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock Grid.Row="4" Grid.Column="0"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                    <Binding Path="BscStableToken"/>
+                    <Binding Path="BscStableAmount"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock Grid.Row="4" Grid.Column="1"
+                   HorizontalAlignment="Center">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                    <Binding Path="AvalancheStableToken"/>
+                    <Binding Path="AvalancheUnstableAmount"/>
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
     </Grid>
 </Window>

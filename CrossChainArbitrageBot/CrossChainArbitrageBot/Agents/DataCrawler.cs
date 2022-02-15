@@ -110,12 +110,11 @@ namespace CrossChainArbitrageBot.Agents
                     }
                 
                     OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));
-                    Thread.Sleep(3000);
+                    Thread.Sleep(1000);
                 }
                 catch (Exception e)
                 {
-                    
-                    throw;
+                    Serilog.Log.Warning(e, $"Error while crawling data {e}");
                 }
             }
         }

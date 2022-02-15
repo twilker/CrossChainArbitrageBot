@@ -6,6 +6,7 @@ using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CrossChainArbitrageBot.ViewModel;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -23,6 +24,10 @@ namespace CrossChainArbitrageBot.Agents
         {
             if (messageData.TryGet(out DataUpdated updated))
             {
+                mainWindow.Dispatcher.Invoke(() =>
+                {
+                    UpdateViewModel(updated.Updates);
+                });
                 return;
             }
             MainWindowCreated mainWindowCreated = messageData.Get<MainWindowCreated>();
@@ -30,9 +35,45 @@ namespace CrossChainArbitrageBot.Agents
             SubscribeToEvents();
         }
 
+        private void UpdateViewModel(DataUpdate[] updatedUpdates)
+        {
+            WindowViewModel viewModel = (WindowViewModel)mainWindow.DataContext;
+            double bscPrice = 0;
+            double avalanchePrice = 0;
+            foreach (DataUpdate dataUpdate in updatedUpdates)
+            {
+                switch (dataUpdate.BlockchainName)
+                {
+                    case BlockchainName.Bsc:
+                        bscPrice = dataUpdate.UnstablePrice;
+                        viewModel.BscStableAmount = dataUpdate.StableAmount;
+                        viewModel.BscStableToken = dataUpdate.StableSymbol;
+                        viewModel.BscUnstableAmount = dataUpdate.UnstableAmount;
+                        viewModel.BscUnstablePrice = dataUpdate.UnstablePrice;
+                        viewModel.BscUnstableToken = dataUpdate.UnstableSymbol;
+                        break;
+                    case BlockchainName.Avalanche:
+                        avalanchePrice = dataUpdate.UnstablePrice;
+                        viewModel.AvalancheStableAmount = dataUpdate.StableAmount;
+                        viewModel.AvalancheStableToken = dataUpdate.StableSymbol;
+                        viewModel.AvalancheUnstableAmount = dataUpdate.UnstableAmount;
+                        viewModel.AvalancheUnstablePrice = dataUpdate.UnstablePrice;
+                        viewModel.AvalancheUnstableToken = dataUpdate.UnstableSymbol;
+                        break;
+                    default:
+                        throw new InvalidOperationException("Not implemented.");
+                }
+
+                viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
+            }
+        }
+
         private void SubscribeToEvents()
         {
-
+            mainWindow.Dispatcher.Invoke(() =>
+            {
+                mainWindow.DataContext = new WindowViewModel();
+            });
         }
 
         private void UnsubscribedFromEvents()
