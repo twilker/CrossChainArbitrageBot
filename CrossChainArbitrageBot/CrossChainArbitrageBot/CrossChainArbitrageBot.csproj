@@ -32,4 +32,15 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Images" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Images\avax-logo.png" />
+    <Resource Include="Images\avax-logo.png" />
+    <None Remove="Images\bnb-logo.png" />
+    <Resource Include="Images\bnb-logo.png" />
+  </ItemGroup>
+
 </Project>

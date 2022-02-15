@@ -15,8 +15,9 @@ using System.Configuration;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -32,9 +33,6 @@ namespace CrossChainArbitrageBot.Agents
         protected override void ExecuteCore(Message messageData)
         {
             BlockchainConnected connected = messageData.Get<BlockchainConnected>();
-
-            Timer updateTimer = new(3000) { AutoReset = false };
-            AddDisposable(updateTimer);
 
             List<DataUpdatePackage> packages = new();
             foreach(BlockchainConnection connection in connected.Connections)
@@ -72,44 +70,53 @@ namespace CrossChainArbitrageBot.Agents
                                                    connection.Connection.TransactionManager.Account.Address));
             }
 
-            updateTimer.Elapsed += UpdateTimerOnElapsed;
-            updateTimer.Start();
-            
-            void UpdateTimerOnElapsed(object? sender, ElapsedEventArgs e)
-            {
-                List<DataUpdate> dataUpdates = new();
-                foreach (DataUpdatePackage updatePackage in packages)
-                {
-                    ChainList chain = updatePackage.BlockchainName switch
-                    {
-                        BlockchainName.Bsc => ChainList.bsc,
-                        BlockchainName.Avalanche => ChainList.avalanche,
-                        _ => throw new InvalidOperationException("Not implemented.")
-                    };
-                    Erc20Price unstablePrice = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
-                        chain);
+            Update(packages, messageData);
+        }
 
-                    Task<BigInteger> balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
-                                                                     updatePackage.UnstableCoinId)
-                                                                .GetFunction("balanceOf")
-                                                                .CallAsync<BigInteger>(updatePackage.WalletAddress);
-                    balanceCall.Wait();
-                    decimal unstableAmount = Web3.Convert.FromWei(balanceCall.Result);
+        private void Update(List<DataUpdatePackage> packages, Message messageData)
+        {
+            while (true)
+            {
+                try
+                {
+                    List<DataUpdate> dataUpdates = new();
+                    foreach (DataUpdatePackage updatePackage in packages)
+                    {
+                        ChainList chain = updatePackage.BlockchainName switch
+                        {
+                            BlockchainName.Bsc => ChainList.bsc,
+                            BlockchainName.Avalanche => ChainList.avalanche,
+                            _ => throw new InvalidOperationException("Not implemented.")
+                        };
+                        Erc20Price unstablePrice = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
+                            chain);
+
+                        Task<BigInteger> balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
+                                                                         updatePackage.UnstableCoinId)
+                                                                    .GetFunction("balanceOf")
+                                                                    .CallAsync<BigInteger>(updatePackage.WalletAddress);
+                        balanceCall.Wait();
+                        decimal unstableAmount = Web3.Convert.FromWei(balanceCall.Result);
                     
-                    balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
-                                                                            updatePackage.StableCoinId)
-                                               .GetFunction("balanceOf")
-                                               .CallAsync<BigInteger>(updatePackage.WalletAddress);
-                    balanceCall.Wait();
-                    decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result);
-                    dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName, (double)(unstablePrice.UsdPrice ?? 0),
-                                                   (double)unstableAmount, updatePackage.UnstableCoinSymbol,
-                                                   (double)stableAmount, updatePackage.StableCoinSymbol));
+                        balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
+                                                        updatePackage.StableCoinId)
+                                                   .GetFunction("balanceOf")
+                                                   .CallAsync<BigInteger>(updatePackage.WalletAddress);
+                        balanceCall.Wait();
+                        decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result);
+                        dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName, (double)(unstablePrice.UsdPrice ?? 0),
+                                                       (double)unstableAmount, updatePackage.UnstableCoinSymbol,
+                                                       (double)stableAmount, updatePackage.StableCoinSymbol));
+                    }
+                
+                    OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));
+                    Thread.Sleep(3000);
                 }
-                
-                OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));
-                
-                updateTimer.Start();
+                catch (Exception e)
+                {
+                    
+                    throw;
+                }
             }
         }
 
