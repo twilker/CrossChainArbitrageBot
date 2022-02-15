@@ -68,13 +68,21 @@ namespace CrossChainArbitrageBot
         {
             Web3 bscConnector = new Web3(url: ConfigurationManager.AppSettings["BscHttpApi"],
                 account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
-            Dictionary<string, string> abis = new Dictionary<string, string>
+            Dictionary<string, string> bscAbis = new Dictionary<string, string>
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },
                 {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
             };
-            messageBoard.Publish(new BlockchainConnected(BlockchainName.Bsc, bscConnector, abis));
+            Web3 avaxConnector = new Web3(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
+                account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+            Dictionary<string, string> avaxAbis = new Dictionary<string, string>
+            {
+                {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
+                {"Pair", File.ReadAllText("./Abis/Pair.json") },
+            };
+            messageBoard.Publish(new BlockchainConnected(new BlockchainConnection(BlockchainName.Bsc, bscConnector, bscAbis),
+                                                         new BlockchainConnection(BlockchainName.Avalanche, avaxConnector, avaxAbis)));
         }
 
         private void ConfigureLogging()

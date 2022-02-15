@@ -10,22 +10,20 @@ namespace CrossChainArbitrageBot.Messages
 {
     internal class BlockchainConnected : Message
     {
-        public BlockchainConnected(BlockchainName blockchainName, Web3 connection, Dictionary<string, string> abis) : base(Enumerable.Empty<Message>())
+        public BlockchainConnected(params BlockchainConnection[] connections) : base(Enumerable.Empty<Message>())
         {
-            BlockchainName = blockchainName;
-            Connection = connection;
-            Abis = abis;
+            Connections = connections;
         }
 
-        public BlockchainName BlockchainName { get; }
-        public Web3 Connection { get; }
-        public Dictionary<string, string> Abis { get; }
+        public BlockchainConnection[] Connections { get; }
 
         protected override string DataToString()
         {
-            return $"{nameof(BlockchainName)}: {BlockchainName}; {nameof(Abis)}: {string.Join(", ", Abis.Keys)}";
+            return $"{nameof(Connections)}: {string.Join(", ", Connections.Select(c => c.BlockchainName))}";
         }
     }
+
+    public readonly record struct BlockchainConnection(BlockchainName BlockchainName, Web3 Connection, Dictionary<string, string> Abis);
 
     public enum BlockchainName
     {
