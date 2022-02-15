@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 namespace CrossChainArbitrageBot.Agents
 {
     [Consumes(typeof(MainWindowCreated))]
+    [Consumes(typeof(DataUpdated))]
     internal class UiBot : Agent
     {
         private MainWindow mainWindow;
@@ -20,6 +21,10 @@ namespace CrossChainArbitrageBot.Agents
 
         protected override void ExecuteCore(Message messageData)
         {
+            if (messageData.TryGet(out DataUpdated updated))
+            {
+                return;
+            }
             MainWindowCreated mainWindowCreated = messageData.Get<MainWindowCreated>();
             mainWindow = mainWindowCreated.MainWindow;
             SubscribeToEvents();

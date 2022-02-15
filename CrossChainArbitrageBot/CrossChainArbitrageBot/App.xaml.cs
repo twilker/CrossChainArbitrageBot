@@ -66,17 +66,17 @@ namespace CrossChainArbitrageBot
 
         private void LoadChainsAndAbis(IMessageBoard messageBoard)
         {
-            Web3 bscConnector = new Web3(url: ConfigurationManager.AppSettings["BscHttpApi"],
-                account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
-            Dictionary<string, string> bscAbis = new Dictionary<string, string>
+            Web3 bscConnector = new(url: ConfigurationManager.AppSettings["BscHttpApi"],
+                                    account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+            Dictionary<string, string> bscAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },
                 {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
             };
-            Web3 avaxConnector = new Web3(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
-                account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
-            Dictionary<string, string> avaxAbis = new Dictionary<string, string>
+            Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
+                                     account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+            Dictionary<string, string> avaxAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },

@@ -21,20 +21,22 @@ using System.Timers;
 namespace CrossChainArbitrageBot.Agents
 {
     [Consumes(typeof(BlockchainConnected))]
+    [Produces(typeof(DataUpdated))]
     internal class DataCrawler : Agent
     {
         public DataCrawler(IMessageBoard messageBoard) : base(messageBoard)
         {
+            MoralisClient.Initialize(true, ConfigurationManager.AppSettings["MoralisApiKey"]);
         }
 
         protected override void ExecuteCore(Message messageData)
         {
             BlockchainConnected connected = messageData.Get<BlockchainConnected>();
 
-            Timer updateTimer = new Timer(3000) { AutoReset = false };
+            Timer updateTimer = new(3000) { AutoReset = false };
             AddDisposable(updateTimer);
 
-            List<DataUpdatePackage> packages = new List<DataUpdatePackage>();
+            List<DataUpdatePackage> packages = new();
             foreach(BlockchainConnection connection in connected.Connections)
             {
                 string unstableId;
@@ -70,22 +72,50 @@ namespace CrossChainArbitrageBot.Agents
                                                    connection.Connection.TransactionManager.Account.Address));
             }
 
+            updateTimer.Elapsed += UpdateTimerOnElapsed;
+            updateTimer.Start();
+            
+            void UpdateTimerOnElapsed(object? sender, ElapsedEventArgs e)
+            {
+                List<DataUpdate> dataUpdates = new();
+                foreach (DataUpdatePackage updatePackage in packages)
+                {
+                    ChainList chain = updatePackage.BlockchainName switch
+                    {
+                        BlockchainName.Bsc => ChainList.bsc,
+                        BlockchainName.Avalanche => ChainList.avalanche,
+                        _ => throw new InvalidOperationException("Not implemented.")
+                    };
+                    Erc20Price unstablePrice = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
+                        chain);
 
-            //MoralisClient.Initialize(true, ConfigurationManager.AppSettings["MoralisApiKey"]);
-            //Erc20Price price = MoralisClient.Web3Api.Token.GetTokenPrice(ConfigurationManager.AppSettings["BscUnstableCoindId"], 
-            //    ChainList.bsc);
-
-            //Task<BigInteger> balanceCall = connected.Connection.Eth.GetContract(connected.Abis["Erc20"],
-            //    ConfigurationManager.AppSettings["BscUnstableCoindId"])
-            //    .GetFunction("balanceOf").CallAsync<BigInteger>(connected.Connection.TransactionManager.Account.Address);
-            //balanceCall.Wait();
-            //var amount = Web3.Convert.FromWei(balanceCall.Result);
-            //decimal value = price.UsdPrice.Value * amount;
+                    Task<BigInteger> balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
+                                                                     updatePackage.UnstableCoinId)
+                                                                .GetFunction("balanceOf")
+                                                                .CallAsync<BigInteger>(updatePackage.WalletAddress);
+                    balanceCall.Wait();
+                    decimal unstableAmount = Web3.Convert.FromWei(balanceCall.Result);
+                    
+                    balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
+                                                                            updatePackage.StableCoinId)
+                                               .GetFunction("balanceOf")
+                                               .CallAsync<BigInteger>(updatePackage.WalletAddress);
+                    balanceCall.Wait();
+                    decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result);
+                    dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName, (double)(unstablePrice.UsdPrice ?? 0),
+                                                   (double)unstableAmount, updatePackage.UnstableCoinSymbol,
+                                                   (double)stableAmount, updatePackage.StableCoinSymbol));
+                }
+                
+                OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));
+                
+                updateTimer.Start();
+            }
         }
 
         public readonly record struct DataUpdatePackage(BlockchainName BlockchainName, string UnstableCoinId, string UnstableCoinSymbol, 
                                                         string StableCoinId, string StableCoinSymbol, 
                                                         IEthApiContractService ContractService, string TokenAbi,
-                                                        string walletAddress);
+                                                        string WalletAddress);
     }
 }
