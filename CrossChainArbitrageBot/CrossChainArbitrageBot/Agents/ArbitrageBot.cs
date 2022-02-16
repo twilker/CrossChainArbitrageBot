@@ -12,9 +12,9 @@ namespace CrossChainArbitrageBot.Agents
 {
     [Consumes(typeof(TransactionStarted))]
     [Consumes(typeof(DataUpdated))]
-    [Consumes(typeof(PancakeSwapTradeCompleted))]
+    [Consumes(typeof(TradeCompleted))]
     [Consumes(typeof(StableTokenBridged))]
-    [Produces(typeof(PancakeSwapTradeInitiating))]
+    [Produces(typeof(TradeInitiating))]
     [Produces(typeof(TransactionFinished))]
     internal class ArbitrageBot : Agent
     {
@@ -42,12 +42,12 @@ namespace CrossChainArbitrageBot.Agents
                     {
                         case Models.TransactionType.StableToUnstable:
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol}"));
-                            OnMessage(new PancakeSwapTradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
+                            OnMessage(new TradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
                                                                      lastUpdate.StableAmount * set.Message2.TransactionAmount));
                             break;
                         case Models.TransactionType.UnstableToStable:
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol}"));
-                            OnMessage(new PancakeSwapTradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
+                            OnMessage(new TradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
                                                                      lastUpdate.UnstableAmount * set.Message2.TransactionAmount));
                             break;
                         case Models.TransactionType.BridgeStable:
@@ -75,7 +75,7 @@ namespace CrossChainArbitrageBot.Agents
 
         protected override async void ExecuteCore(Message messageData)
         {
-            if(messageData.TryGet(out PancakeSwapTradeCompleted tradeCompleted))
+            if(messageData.TryGet(out TradeCompleted tradeCompleted))
             {
                 ongoingTransaction = 0;
                 OnMessage(new TransactionFinished(messageData, tradeCompleted.Success 

@@ -89,7 +89,7 @@
             <TextBlock.Text>
                 <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
                     <Binding Path="AvalancheStableToken"/>
-                    <Binding Path="AvalancheUnstableAmount"/>
+                    <Binding Path="AvalancheStableAmount"/>
                 </MultiBinding>
             </TextBlock.Text>
         </TextBlock>

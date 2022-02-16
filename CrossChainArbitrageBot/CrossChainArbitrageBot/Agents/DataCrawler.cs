@@ -64,8 +64,22 @@ namespace CrossChainArbitrageBot.Agents
                                        .GetFunction("symbol").CallAsync<string>();
                 symbolCall.Wait();
                 string stableCoin = symbolCall.Result;
+                
+                Task<int> decimalsCall = connection.Connection.Eth.GetContract(connection.Abis["Erc20"],
+                                                         unstableId)
+                                                    .GetFunction("decimals").CallAsync<int>();
+                decimalsCall.Wait();
+                int unstableDecimals = decimalsCall.Result;
+                
+                decimalsCall = connection.Connection.Eth.GetContract(connection.Abis["Erc20"],
+                                                         stableId)
+                                                    .GetFunction("decimals").CallAsync<int>();
+                decimalsCall.Wait();
+                int stableDecimals = decimalsCall.Result;
 
-                packages.Add(new DataUpdatePackage(connection.BlockchainName, unstableId, unstableCoin, stableId, stableCoin,
+                packages.Add(new DataUpdatePackage(connection.BlockchainName, 
+                                                   unstableId, unstableCoin, unstableDecimals,
+                                                   stableId, stableCoin, stableDecimals,
                                                    connection.Connection.Eth, connection.Abis["Erc20"],
                                                    connection.Connection.TransactionManager.Account.Address));
             }
@@ -96,14 +110,14 @@ namespace CrossChainArbitrageBot.Agents
                                                                     .GetFunction("balanceOf")
                                                                     .CallAsync<BigInteger>(updatePackage.WalletAddress);
                         balanceCall.Wait();
-                        decimal unstableAmount = Web3.Convert.FromWei(balanceCall.Result);
+                        decimal unstableAmount = Web3.Convert.FromWei(balanceCall.Result, updatePackage.UnstableDecimals);
                     
                         balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
                                                         updatePackage.StableCoinId)
                                                    .GetFunction("balanceOf")
                                                    .CallAsync<BigInteger>(updatePackage.WalletAddress);
                         balanceCall.Wait();
-                        decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result);
+                        decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result, updatePackage.StableDecimals);
 
                         Task<HexBigInteger> accountBalanceCall = updatePackage.ContractService.GetBalance.SendRequestAsync(updatePackage.WalletAddress);
                         accountBalanceCall.Wait();
@@ -111,8 +125,10 @@ namespace CrossChainArbitrageBot.Agents
                         dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName, (double)(unstablePrice.UsdPrice ?? 0),
                                                        (double)unstableAmount, updatePackage.UnstableCoinSymbol,
                                                        updatePackage.UnstableCoinId,
+                                                       updatePackage.UnstableDecimals,
                                                        (double)stableAmount, updatePackage.StableCoinSymbol,
                                                        updatePackage.StableCoinId,
+                                                       updatePackage.StableDecimals,
                                                        (double)accountBalance));
                     }
                 
@@ -126,8 +142,9 @@ namespace CrossChainArbitrageBot.Agents
             }
         }
 
-        public readonly record struct DataUpdatePackage(BlockchainName BlockchainName, string UnstableCoinId, string UnstableCoinSymbol, 
-                                                        string StableCoinId, string StableCoinSymbol, 
+        public readonly record struct DataUpdatePackage(BlockchainName BlockchainName, 
+                                                        string UnstableCoinId, string UnstableCoinSymbol, int UnstableDecimals,
+                                                        string StableCoinId, string StableCoinSymbol, int StableDecimals, 
                                                         IEthApiContractService ContractService, string TokenAbi,
                                                         string WalletAddress);
     }

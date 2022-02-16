@@ -17,17 +17,17 @@ using System.Threading.Tasks;
 namespace CrossChainArbitrageBot.Agents
 {
     [Consumes(typeof(BlockchainConnected))]
-    [Consumes(typeof(PancakeSwapTradeInitiating))]
+    [Consumes(typeof(TradeInitiating))]
     internal class PancakeSwapTrader : Agent
     {
-        private readonly MessageCollector<BlockchainConnected, PancakeSwapTradeInitiating> collector;
+        private readonly MessageCollector<BlockchainConnected, TradeInitiating> collector;
 
         public PancakeSwapTrader(IMessageBoard messageBoard) : base(messageBoard)
         {
-            collector = new MessageCollector<BlockchainConnected, PancakeSwapTradeInitiating>(OnCollected);
+            collector = new MessageCollector<BlockchainConnected, TradeInitiating>(OnCollected);
         }
 
-        private void OnCollected(MessageCollection<BlockchainConnected, PancakeSwapTradeInitiating> set)
+        private void OnCollected(MessageCollection<BlockchainConnected, TradeInitiating> set)
         {
             set.MarkAsConsumed(set.Message2);
 
@@ -59,13 +59,13 @@ namespace CrossChainArbitrageBot.Agents
                 var swapEventList = reciept.Result.DecodeAllEvents<SwapEvent>().Where(t => t.Event != null)
                     .Select(t => t.Event).ToList();
                 var swapEvent = swapEventList.FirstOrDefault();
-                OnMessage(new PancakeSwapTradeCompleted(set, swapEvent != null));
+                OnMessage(new TradeCompleted(set, swapEvent != null));
             }
             catch (Exception e)
             {
                 OnMessage(new ImportantNotice(set, $"Error trading {e}"));
 
-                OnMessage(new PancakeSwapTradeCompleted(set, false));
+                OnMessage(new TradeCompleted(set, false));
             }
         }
 

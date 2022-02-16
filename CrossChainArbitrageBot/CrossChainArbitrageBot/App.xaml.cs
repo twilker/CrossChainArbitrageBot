@@ -87,6 +87,7 @@ namespace CrossChainArbitrageBot
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },
                 {"AnySwap", File.ReadAllText("./Abis/AnySwap.json") },
+                {"TraderJoe", File.ReadAllText("./Abis/TraderJoe.json") },
             };
             messageBoard.Publish(new BlockchainConnected(new BlockchainConnection(BlockchainName.Bsc, bscConnector, bscAbis),
                                                          new BlockchainConnection(BlockchainName.Avalanche, avaxConnector, avaxAbis)));

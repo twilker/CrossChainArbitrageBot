@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace CrossChainArbitrageBot.Messages
 {
-    internal class PancakeSwapTradeCompleted : Message
+    internal class TradeCompleted : Message
     {
-        public PancakeSwapTradeCompleted(Message predecessorMessage, bool success) : base(predecessorMessage)
+        public TradeCompleted(Message predecessorMessage, bool success) : base(predecessorMessage)
         {
             Success = success;
         }
 
-        public PancakeSwapTradeCompleted(IEnumerable<Message> predecessorMessages, bool success) : base(predecessorMessages)
+        public TradeCompleted(IEnumerable<Message> predecessorMessages, bool success) : base(predecessorMessages)
         {
             Success = success;
         }
