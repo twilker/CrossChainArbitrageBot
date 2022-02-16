@@ -104,9 +104,16 @@ namespace CrossChainArbitrageBot.Agents
                                                    .CallAsync<BigInteger>(updatePackage.WalletAddress);
                         balanceCall.Wait();
                         decimal stableAmount = Web3.Convert.FromWei(balanceCall.Result);
+
+                        Task<HexBigInteger> accountBalanceCall = updatePackage.ContractService.GetBalance.SendRequestAsync(updatePackage.WalletAddress);
+                        accountBalanceCall.Wait();
+                        decimal accountBalance = Web3.Convert.FromWei(accountBalanceCall.Result.Value);
                         dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName, (double)(unstablePrice.UsdPrice ?? 0),
                                                        (double)unstableAmount, updatePackage.UnstableCoinSymbol,
-                                                       (double)stableAmount, updatePackage.StableCoinSymbol));
+                                                       updatePackage.UnstableCoinId,
+                                                       (double)stableAmount, updatePackage.StableCoinSymbol,
+                                                       updatePackage.StableCoinId,
+                                                       (double)accountBalance));
                     }
                 
                     OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));

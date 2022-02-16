@@ -1,4 +1,5 @@
 ﻿using Agents.Net;
+using CrossChainArbitrageBot.Models;
 using Nethereum.Web3;
 using System;
 using System.Collections.Generic;
@@ -24,10 +25,4 @@ namespace CrossChainArbitrageBot.Messages
     }
 
     public readonly record struct BlockchainConnection(BlockchainName BlockchainName, Web3 Connection, Dictionary<string, string> Abis);
-
-    public enum BlockchainName
-    {
-        Bsc,
-        Avalanche
-    }
 }

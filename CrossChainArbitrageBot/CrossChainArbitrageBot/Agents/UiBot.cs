@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CrossChainArbitrageBot.ViewModel;
+using CrossChainArbitrageBot.Models;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -15,6 +16,7 @@ namespace CrossChainArbitrageBot.Agents
     internal class UiBot : Agent
     {
         private MainWindow mainWindow;
+        private MainWindowCreated mainWindowCreated;
 
         public UiBot(IMessageBoard messageBoard) : base(messageBoard)
         {
@@ -30,7 +32,7 @@ namespace CrossChainArbitrageBot.Agents
                 });
                 return;
             }
-            MainWindowCreated mainWindowCreated = messageData.Get<MainWindowCreated>();
+            mainWindowCreated = messageData.Get<MainWindowCreated>();
             mainWindow = mainWindowCreated.MainWindow;
             SubscribeToEvents();
         }
@@ -51,6 +53,7 @@ namespace CrossChainArbitrageBot.Agents
                         viewModel.BscUnstableAmount = dataUpdate.UnstableAmount;
                         viewModel.BscUnstablePrice = dataUpdate.UnstablePrice;
                         viewModel.BscUnstableToken = dataUpdate.UnstableSymbol;
+                        viewModel.BscAccountBalance = dataUpdate.AccountBalance;
                         break;
                     case BlockchainName.Avalanche:
                         avalanchePrice = dataUpdate.UnstablePrice;
@@ -59,6 +62,7 @@ namespace CrossChainArbitrageBot.Agents
                         viewModel.AvalancheUnstableAmount = dataUpdate.UnstableAmount;
                         viewModel.AvalancheUnstablePrice = dataUpdate.UnstablePrice;
                         viewModel.AvalancheUnstableToken = dataUpdate.UnstableSymbol;
+                        viewModel.AvalancheAccountBalance = dataUpdate.AccountBalance;
                         break;
                     default:
                         throw new InvalidOperationException("Not implemented.");
@@ -72,13 +76,20 @@ namespace CrossChainArbitrageBot.Agents
         {
             mainWindow.Dispatcher.Invoke(() =>
             {
-                mainWindow.DataContext = new WindowViewModel();
+                WindowViewModel viewModel = new WindowViewModel();
+                mainWindow.DataContext = viewModel;
+                viewModel.TransactionInitiated += OnTransactionInitiated;
             });
         }
 
         private void UnsubscribedFromEvents()
         {
+            ((WindowViewModel)mainWindow.DataContext).TransactionInitiated -= OnTransactionInitiated;
+        }
 
+        private void OnTransactionInitiated(object? sender, TransactionEventArgs e)
+        {
+            OnMessage(new TransactionStarted(mainWindowCreated, (double)e.TransactionAmount / 100, e.Chain, e.Type));
         }
 
         protected override void Dispose(bool disposing)

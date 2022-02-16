@@ -1,6 +1,9 @@
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using CrossChainArbitrageBot.Annotations;
+using CrossChainArbitrageBot.Models;
 
 namespace CrossChainArbitrageBot.ViewModel;
 
@@ -17,6 +20,10 @@ public class WindowViewModel : INotifyPropertyChanged
     private string avalancheUnstableToken;
     private string bscStableToken;
     private string avalancheStableToken;
+    private double bscAccountBalance;
+    private double avalancheAccountBalance;
+    private int bscTransactionPercentage;
+    private int avalancheTransactionPercentage;
 
     public double Spread
     {
@@ -73,6 +80,17 @@ public class WindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public double BscAccountBalance
+    {
+        get => bscAccountBalance;
+        set
+        {
+            if (value.Equals(bscAccountBalance)) return;
+            bscAccountBalance = value;
+            OnPropertyChanged();
+        }
+    }
+
     public string BscUnstableToken
     {
         get => bscUnstableToken;
@@ -91,6 +109,17 @@ public class WindowViewModel : INotifyPropertyChanged
         {
             if (value.Equals(avalancheUnstableAmount)) return;
             avalancheUnstableAmount = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double AvalancheAccountBalance
+    {
+        get => avalancheAccountBalance;
+        set
+        {
+            if (value.Equals(avalancheAccountBalance)) return;
+            avalancheAccountBalance = value;
             OnPropertyChanged();
         }
     }
@@ -137,6 +166,59 @@ public class WindowViewModel : INotifyPropertyChanged
             avalancheUnstableToken = value;
             OnPropertyChanged();
         }
+    }
+
+    public int BscTransactionPercentage
+    {
+        get => bscTransactionPercentage;
+        set
+        {
+            if (value == bscTransactionPercentage) return;
+            bscTransactionPercentage = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public ICommand BscUnstableToStableCommand { get; }
+
+    public ICommand BscStableToUnstableCommand { get; }
+
+    public int AvalancheTransactionPercentage
+    {
+        get => avalancheTransactionPercentage;
+        set
+        {
+            if (value == avalancheTransactionPercentage) return;
+            avalancheTransactionPercentage = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public WindowViewModel()
+    {
+        BscUnstableToStableCommand = new RelayCommand(BscUnstableToStable);
+        BscStableToUnstableCommand = new RelayCommand(BscStableToUnstable);
+    }
+
+    private void BscUnstableToStable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+                               BlockchainName.Bsc,
+                               TransactionType.UnstableToStable));
+    }
+
+    private void BscStableToUnstable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+                               BlockchainName.Bsc,
+                               TransactionType.StableToUnstable));
+    }
+
+    public event EventHandler<TransactionEventArgs>? TransactionInitiated;
+
+    protected void OnTransactionInitiated(TransactionEventArgs eventArgs)
+    {
+        TransactionInitiated?.Invoke(this, eventArgs);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

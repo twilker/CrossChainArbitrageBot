@@ -19,6 +19,9 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Image Source="Images/bnb-logo.png" HorizontalAlignment="Center" 
                Grid.Row="0" Grid.Column="0" Width="100" Height="100"/>
@@ -82,5 +85,31 @@
                 </MultiBinding>
             </TextBlock.Text>
         </TextBlock>
+        <TextBlock Grid.Row="5" Grid.Column="0"
+                   HorizontalAlignment="Center"
+                   Text="{Binding BscAccountBalance, StringFormat={}BNB Amount: {0:F4}}"/>
+        <TextBlock Grid.Row="5" Grid.Column="1"
+                   HorizontalAlignment="Center"
+                   Text="{Binding AvalancheAccountBalance, StringFormat={}AVAX Amount: {0:F4}}"/>
+        <DockPanel Grid.Row="6" Grid.Column="0"
+            VerticalAlignment="Center" Margin="10">
+            <TextBox Text="{Binding ElementName=slValue, Path=Value, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" TextAlignment="Right" Width="40" />
+            <Slider Maximum="100" TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="True" Name="slValue" 
+                    Value="{Binding BscTransactionPercentage}"/>
+        </DockPanel>
+        <Button Grid.Row="7" Grid.Column="0"
+            HorizontalAlignment="Center" Margin="10"
+                Command="{Binding BscStableToUnstableCommand}">
+            <Button.Content>
+                <TextBlock HorizontalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} -> {1}">
+                            <Binding Path="BscStableToken"/>
+                            <Binding Path="BscUnstableToken"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </Button.Content>
+        </Button>
     </Grid>
 </Window>

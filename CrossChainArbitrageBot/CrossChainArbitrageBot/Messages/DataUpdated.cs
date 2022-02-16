@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Agents.Net;
+using CrossChainArbitrageBot.Models;
 
 namespace CrossChainArbitrageBot.Messages;
 
@@ -24,4 +25,5 @@ public class DataUpdated : Message
 }
 
 public readonly record struct DataUpdate(BlockchainName BlockchainName, double UnstablePrice, double UnstableAmount,
-                                         string UnstableSymbol, double StableAmount, string StableSymbol);
+                                         string UnstableSymbol, string UnstableId, double StableAmount, string StableSymbol,
+                                         string StableId, double AccountBalance);

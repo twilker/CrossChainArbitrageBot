@@ -1,6 +1,7 @@
 ﻿using Agents.Net;
 using Autofac;
 using CrossChainArbitrageBot.Messages;
+using CrossChainArbitrageBot.Models;
 using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Serilog;
@@ -67,7 +68,9 @@ namespace CrossChainArbitrageBot
         private void LoadChainsAndAbis(IMessageBoard messageBoard)
         {
             Web3 bscConnector = new(url: ConfigurationManager.AppSettings["BscHttpApi"],
-                                    account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+                                    account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 56));
+            bscConnector.TransactionManager.UseLegacyAsDefault = true;
+            bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: Nethereum.Util.UnitConversion.EthUnit.Gwei);
             Dictionary<string, string> bscAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
@@ -75,7 +78,9 @@ namespace CrossChainArbitrageBot
                 {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
             };
             Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
-                                     account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"]));
+                                     account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 43114));
+            avaxConnector.TransactionManager.UseLegacyAsDefault = true;
+            avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: Nethereum.Util.UnitConversion.EthUnit.Gwei);
             Dictionary<string, string> avaxAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
