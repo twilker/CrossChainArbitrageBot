@@ -31,11 +31,11 @@ namespace CrossChainArbitrageBot.Agents
         {
             set.MarkAsConsumed(set.Message2);
 
-            BlockchainConnection connection = set.Message1.Connections.First((c) => c.BlockchainName == Models.BlockchainName.Bsc);
-            Contract pancakeContract = connection.Connection.Eth.GetContract(connection.Abis["Pancake"], ConfigurationManager.AppSettings["PancakeswapRouterAddress"]);
-
             try
             {
+                BlockchainConnection connection = set.Message1.Connections.First((c) => c.BlockchainName == Models.BlockchainName.Bsc);
+                Contract pancakeContract = connection.Connection.Eth.GetContract(connection.Abis["Pancake"], ConfigurationManager.AppSettings["PancakeswapRouterAddress"]);
+
                 var sellFunction = pancakeContract.GetFunction("swapExactTokensForTokens");
 
                 var gas = new HexBigInteger(300000);
@@ -54,7 +54,7 @@ namespace CrossChainArbitrageBot.Agents
                 buyCall.Wait();
                 var reciept = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(buyCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
                 reciept.Wait();
-                Log.Information($"[TRADE] TX ID: {buyCall.Result} Reciept: {reciept}");
+                OnMessage(new ImportantNotice(set, $"[TRADE] TX ID: {buyCall.Result} Reciept: {reciept.Result}"));
 
                 var swapEventList = reciept.Result.DecodeAllEvents<SwapEvent>().Where(t => t.Event != null)
                     .Select(t => t.Event).ToList();
@@ -63,7 +63,7 @@ namespace CrossChainArbitrageBot.Agents
             }
             catch (Exception e)
             {
-                Log.Error($"Error trading {e}", e);
+                OnMessage(new ImportantNotice(set, $"Error trading {e}"));
 
                 OnMessage(new PancakeSwapTradeCompleted(set, false));
             }

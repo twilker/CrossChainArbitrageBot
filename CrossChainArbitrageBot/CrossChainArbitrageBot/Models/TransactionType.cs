@@ -4,7 +4,8 @@
     {
         StableToUnstable,
         UnstableToStable,
-        Bridge,
+        BridgeStable,
+        BridgeUnstable,
         StableToGas
     }
 }

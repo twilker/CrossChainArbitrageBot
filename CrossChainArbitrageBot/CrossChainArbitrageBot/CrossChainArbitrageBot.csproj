@@ -21,6 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Abis\AnySwap.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Abis\Erc20.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -13,6 +13,7 @@ namespace CrossChainArbitrageBot.Agents
 {
     [Consumes(typeof(MainWindowCreated))]
     [Consumes(typeof(DataUpdated))]
+    [Consumes(typeof(ImportantNotice))]
     internal class UiBot : Agent
     {
         private MainWindow mainWindow;
@@ -24,6 +25,14 @@ namespace CrossChainArbitrageBot.Agents
 
         protected override void ExecuteCore(Message messageData)
         {
+            if(messageData.TryGet(out ImportantNotice importantNotice))
+            {
+                mainWindow.Dispatcher.Invoke(() =>
+                {
+                    ((WindowViewModel)mainWindow.DataContext).ImportantNotices.Add(importantNotice.Notice);
+                });
+                return;
+            }
             if (messageData.TryGet(out DataUpdated updated))
             {
                 mainWindow.Dispatcher.Invoke(() =>

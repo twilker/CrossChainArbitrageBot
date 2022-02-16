@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -183,6 +184,10 @@ public class WindowViewModel : INotifyPropertyChanged
 
     public ICommand BscStableToUnstableCommand { get; }
 
+    public ICommand BscBridgeStableCommand { get; }
+
+    public ObservableCollection<string> ImportantNotices { get; } = new ObservableCollection<string>();
+
     public int AvalancheTransactionPercentage
     {
         get => avalancheTransactionPercentage;
@@ -198,6 +203,14 @@ public class WindowViewModel : INotifyPropertyChanged
     {
         BscUnstableToStableCommand = new RelayCommand(BscUnstableToStable);
         BscStableToUnstableCommand = new RelayCommand(BscStableToUnstable);
+        BscBridgeStableCommand = new RelayCommand(BscBridgeStable);
+    }
+
+    private void BscBridgeStable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+                               BlockchainName.Bsc,
+                               TransactionType.BridgeStable));
     }
 
     private void BscUnstableToStable(object? parameter)
