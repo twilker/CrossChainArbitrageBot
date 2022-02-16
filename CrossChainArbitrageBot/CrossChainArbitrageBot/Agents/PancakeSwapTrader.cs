@@ -39,18 +39,18 @@ namespace CrossChainArbitrageBot.Agents
                 var sellFunction = pancakeContract.GetFunction("swapExactTokensForTokens");
 
                 var gas = new HexBigInteger(300000);
-                var amount = new HexBigInteger(Web3.Convert.ToWei(set.Message2.Amount));
+                BigInteger amount = Web3.Convert.ToWei(Math.Floor(set.Message2.Amount * Math.Pow(10, 17))/ Math.Pow(10, 17));
 
                 object[] parameters = new object[]
                 {
-                    amount.Value,
+                    amount,
                     0,
                     new string[] { set.Message2.FromTokenId, set.Message2.ToTokenId },
                     connection.Connection.Eth.TransactionManager.Account.Address,
                     (DateTime.UtcNow.Ticks + 10000)
                 };
                 var buyCall = sellFunction.SendTransactionAsync(connection.Connection.Eth.TransactionManager.Account.Address, 
-                                                                gas, amount, parameters);
+                                                                gas, new HexBigInteger(0), parameters);
                 buyCall.Wait();
                 var reciept = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(buyCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
                 reciept.Wait();

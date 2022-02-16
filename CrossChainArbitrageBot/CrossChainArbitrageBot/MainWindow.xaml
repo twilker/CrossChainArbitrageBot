@@ -22,6 +22,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Image Source="Images/bnb-logo.png" HorizontalAlignment="Center" 
                Grid.Row="0" Grid.Column="0" Width="100" Height="100"/>
@@ -106,6 +107,20 @@
                         <MultiBinding StringFormat="{}{0} -> {1}">
                             <Binding Path="BscStableToken"/>
                             <Binding Path="BscUnstableToken"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </Button.Content>
+        </Button>
+        <Button Grid.Row="8" Grid.Column="0"
+            HorizontalAlignment="Center" Margin="10"
+                Command="{Binding BscUnstableToStableCommand}">
+            <Button.Content>
+                <TextBlock HorizontalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} -> {1}">
+                            <Binding Path="BscUnstableToken"/>
+                            <Binding Path="BscStableToken"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
