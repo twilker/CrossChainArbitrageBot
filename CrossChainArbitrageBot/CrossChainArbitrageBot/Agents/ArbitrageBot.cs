@@ -1,12 +1,9 @@
-﻿using Agents.Net;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using Agents.Net;
 using CrossChainArbitrageBot.Messages;
 using CrossChainArbitrageBot.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -19,7 +16,7 @@ namespace CrossChainArbitrageBot.Agents
     internal class ArbitrageBot : Agent
     {
         private readonly MessageCollector<DataUpdated, TransactionStarted> collector;
-        private int ongoingTransaction = 0;
+        private int ongoingTransaction;
 
         public ArbitrageBot(IMessageBoard messageBoard) : base(messageBoard)
         {
@@ -36,35 +33,59 @@ namespace CrossChainArbitrageBot.Agents
 
             switch (set.Message2.Chain)
             {
-                case Models.BlockchainName.Bsc:
-                    DataUpdate lastUpdate = set.Message1.Updates.First((u) => u.BlockchainName == Models.BlockchainName.Bsc);
+                case BlockchainName.Bsc:
+                    DataUpdate lastUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
                     switch (set.Message2.Type)
                     {
-                        case Models.TransactionType.StableToUnstable:
-                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol}"));
+                        case TransactionType.StableToUnstable:
+                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol} on BSC"));
                             OnMessage(new TradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
-                                                                     lastUpdate.StableAmount * set.Message2.TransactionAmount));
+                                                          lastUpdate.StableAmount * set.Message2.TransactionAmount,
+                                                          TradingPlatform.PancakeSwap));
                             break;
-                        case Models.TransactionType.UnstableToStable:
-                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol}"));
+                        case TransactionType.UnstableToStable:
+                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol} on BSC"));
                             OnMessage(new TradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
-                                                                     lastUpdate.UnstableAmount * set.Message2.TransactionAmount));
+                                                                     lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
+                                                                     TradingPlatform.PancakeSwap));
                             break;
-                        case Models.TransactionType.BridgeStable:
-                            var targetUpdate = set.Message1.Updates.First((u) => u.BlockchainName == Models.BlockchainName.Avalanche);
+                        case TransactionType.BridgeStable:
+                            DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
                             OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} to Avalanche"));
-                            OnMessage(new StableTokenBridging(set, Models.BlockchainName.Bsc,
+                            OnMessage(new StableTokenBridging(set, BlockchainName.Bsc,
                                                               lastUpdate.StableAmount * set.Message2.TransactionAmount,
                                                               targetUpdate.StableAmount));
                             break;
-                        case Models.TransactionType.StableToGas:
+                        case TransactionType.StableToGas:
                             throw new InvalidOperationException("Not Implemented.");
                         default:
                             throw new InvalidOperationException("Not Implemented.");
                     }
                     break;
-                case Models.BlockchainName.Avalanche:
-                    throw new InvalidOperationException("Not Implemented.");
+                case BlockchainName.Avalanche:
+                    lastUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
+                    switch (set.Message2.Type)
+                    {
+                        case TransactionType.StableToUnstable:
+                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol} on Avalanche"));
+                            OnMessage(new TradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
+                                                          lastUpdate.StableAmount * set.Message2.TransactionAmount,
+                                                          TradingPlatform.TraderJoe));
+                            break;
+                        case TransactionType.UnstableToStable:
+                            OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol} on Avalanche"));
+                            OnMessage(new TradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
+                                                                     lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
+                                                                     TradingPlatform.TraderJoe));
+                            break;
+                        case TransactionType.BridgeStable:
+                            throw new InvalidOperationException("Not Implemented.");
+                        case TransactionType.StableToGas:
+                            throw new InvalidOperationException("Not Implemented.");
+                        default:
+                            throw new InvalidOperationException("Not Implemented.");
+                    }
+                    break;
                 default:
                     throw new InvalidOperationException("Not Implemented.");
             }
@@ -83,7 +104,8 @@ namespace CrossChainArbitrageBot.Agents
                                                                 : TransactionResult.Failed));
                 return;
             }
-            else if(messageData.TryGet(out StableTokenBridged tokenBridged))
+
+            if(messageData.TryGet(out StableTokenBridged tokenBridged))
             {
                 if (tokenBridged.Success)
                 {
@@ -97,10 +119,11 @@ namespace CrossChainArbitrageBot.Agents
                 }
                 return;
             }
-            else if(messageData.TryGet(out DataUpdated dataUpdated) && 
-                    awaitingBridgeAmount != null &&
-                    dataUpdated.Updates.First(u => u.BlockchainName == awaitingBridgeAmount.TargetChain)
-                               .StableAmount >= awaitingBridgeAmount.OriginalAmount+awaitingBridgeAmount.SendAmount*0.5)
+
+            if(messageData.TryGet(out DataUpdated dataUpdated) && 
+               awaitingBridgeAmount != null &&
+               dataUpdated.Updates.First(u => u.BlockchainName == awaitingBridgeAmount.TargetChain)
+                          .StableAmount >= awaitingBridgeAmount.OriginalAmount+awaitingBridgeAmount.SendAmount*0.5)
             {
                 //TODO potential double execution here
                 OnMessage(new TransactionFinished(awaitingBridgeAmount.OriginalMessage, TransactionResult.Success));

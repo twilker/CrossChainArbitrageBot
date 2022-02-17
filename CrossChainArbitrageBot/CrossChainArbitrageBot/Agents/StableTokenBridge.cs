@@ -1,17 +1,16 @@
-﻿using Agents.Net;
+﻿using System;
+using System.Configuration;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+using Agents.Net;
 using CrossChainArbitrageBot.Messages;
 using CrossChainArbitrageBot.Models;
 using Nethereum.Contracts;
 using Nethereum.Hex.HexTypes;
+using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -32,7 +31,7 @@ namespace CrossChainArbitrageBot.Agents
 
             try
             {
-                BlockchainConnection connection = set.Message1.Connections.First((c) => c.BlockchainName == set.Message2.SourceChain);
+                BlockchainConnection connection = set.Message1.Connections.First(c => c.BlockchainName == set.Message2.SourceChain);
                 string contractAdress = set.Message2.SourceChain switch
                 {
                     BlockchainName.Bsc => ConfigurationManager.AppSettings["BscAnySwapRouterAddress"] ?? throw new ConfigurationErrorsException("BscAnySwapRouterAddress not defined."),
@@ -55,24 +54,23 @@ namespace CrossChainArbitrageBot.Agents
 
                 Function bridgeFunction = anySwapContract.GetFunction("anySwapOutUnderlying");
 
-                var gas = new HexBigInteger(300000);
+                HexBigInteger gas = new(300000);
                 BigInteger amount = Web3.Convert.ToWei(Math.Floor(set.Message2.Amount * Math.Pow(10, 12)) / Math.Pow(10, 12));
 
-                object[] parameters = new object[]
-                {
+                object[] parameters = {
                 token,
                 connection.Connection.TransactionManager.Account.Address,
                 amount,
                 targetChainId
                 };
 
-                var bridgeCall = bridgeFunction.SendTransactionAsync(connection.Connection.Eth.TransactionManager.Account.Address,
-                                                                    gas, new HexBigInteger(0), parameters);
+                Task<string>? bridgeCall = bridgeFunction.SendTransactionAsync(connection.Connection.Eth.TransactionManager.Account.Address,
+                                                                               gas, new HexBigInteger(0), parameters);
                 bridgeCall.Wait();
-                var reciept = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(bridgeCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
-                reciept.Wait();
-                OnMessage(new ImportantNotice(set, $"[BRIDGE] TX ID: {bridgeCall.Result} Reciept: {reciept.Result}"));
-                OnMessage(new StableTokenBridged(set, reciept.Result.Status.Value == 1, set.Message2.Amount, set.Message2.OriginalTargetAmount,
+                Task<TransactionReceipt>? receipt = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(bridgeCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
+                receipt.Wait();
+                OnMessage(new ImportantNotice(set, $"[BRIDGE] TX ID: {bridgeCall.Result} receipt: {receipt.Result}"));
+                OnMessage(new StableTokenBridged(set, receipt.Result.Status.Value == 1, set.Message2.Amount, set.Message2.OriginalTargetAmount,
                                                  set.Message2.SourceChain switch
                                                  {
                                                      BlockchainName.Bsc => BlockchainName.Avalanche,

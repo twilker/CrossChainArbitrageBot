@@ -1,11 +1,8 @@
-﻿using Agents.Net;
+﻿using System.Collections.Generic;
+using System.Linq;
+using Agents.Net;
 using CrossChainArbitrageBot.Models;
 using Nethereum.Web3;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CrossChainArbitrageBot.Messages
 {

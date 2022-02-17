@@ -1,19 +1,18 @@
-﻿using Agents.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using Agents.Net;
 using Autofac;
 using CrossChainArbitrageBot.Messages;
 using CrossChainArbitrageBot.Models;
+using Nethereum.Util;
 using Nethereum.Web3;
 using Nethereum.Web3.Accounts;
 using Serilog;
 using Serilog.Formatting.Compact;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
 
 namespace CrossChainArbitrageBot
 {
@@ -70,7 +69,7 @@ namespace CrossChainArbitrageBot
             Web3 bscConnector = new(url: ConfigurationManager.AppSettings["BscHttpApi"],
                                     account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 56));
             bscConnector.TransactionManager.UseLegacyAsDefault = true;
-            bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: Nethereum.Util.UnitConversion.EthUnit.Gwei);
+            bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: UnitConversion.EthUnit.Gwei);
             Dictionary<string, string> bscAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
@@ -81,7 +80,7 @@ namespace CrossChainArbitrageBot
             Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
                                      account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 43114));
             avaxConnector.TransactionManager.UseLegacyAsDefault = true;
-            avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: Nethereum.Util.UnitConversion.EthUnit.Gwei);
+            avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(35, fromUnit: UnitConversion.EthUnit.Gwei);
             Dictionary<string, string> avaxAbis = new()
             {
                 {"Erc20", File.ReadAllText("./Abis/Erc20.json") },

@@ -186,7 +186,7 @@ public class WindowViewModel : INotifyPropertyChanged
 
     public ICommand BscBridgeStableCommand { get; }
 
-    public ObservableCollection<string> ImportantNotices { get; } = new ObservableCollection<string>();
+    public ObservableCollection<string> ImportantNotices { get; } = new();
 
     public int AvalancheTransactionPercentage
     {

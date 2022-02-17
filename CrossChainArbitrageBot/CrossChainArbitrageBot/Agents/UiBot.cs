@@ -1,13 +1,8 @@
-﻿using Agents.Net;
+﻿using System;
+using Agents.Net;
 using CrossChainArbitrageBot.Messages;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CrossChainArbitrageBot.ViewModel;
 using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.ViewModel;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -85,7 +80,7 @@ namespace CrossChainArbitrageBot.Agents
         {
             mainWindow.Dispatcher.Invoke(() =>
             {
-                WindowViewModel viewModel = new WindowViewModel();
+                WindowViewModel viewModel = new();
                 mainWindow.DataContext = viewModel;
                 viewModel.TransactionInitiated += OnTransactionInitiated;
             });

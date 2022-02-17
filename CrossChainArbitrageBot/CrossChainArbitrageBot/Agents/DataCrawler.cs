@@ -1,23 +1,18 @@
-﻿using Agents.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+using Agents.Net;
 using CrossChainArbitrageBot.Messages;
 using CrossChainArbitrageBot.Models;
-using Fractions;
 using Moralis.Web3Api;
 using Moralis.Web3Api.Models;
 using Nethereum.Contracts.Services;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
-using Newtonsoft.Json.Linq;
-using RestSharp;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Timer = System.Timers.Timer;
+using Log = Serilog.Log;
 
 namespace CrossChainArbitrageBot.Agents
 {
@@ -137,7 +132,7 @@ namespace CrossChainArbitrageBot.Agents
                 }
                 catch (Exception e)
                 {
-                    Serilog.Log.Warning(e, $"Error while crawling data {e}");
+                    Log.Warning(e, $"Error while crawling data {e}");
                 }
             }
         }
