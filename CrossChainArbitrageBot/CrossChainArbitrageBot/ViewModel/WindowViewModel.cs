@@ -23,8 +23,7 @@ public class WindowViewModel : INotifyPropertyChanged
     private string avalancheStableToken;
     private double bscAccountBalance;
     private double avalancheAccountBalance;
-    private int bscTransactionPercentage;
-    private int avalancheTransactionPercentage;
+    private int transactionPercentage;
 
     public double Spread
     {
@@ -169,13 +168,13 @@ public class WindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public int BscTransactionPercentage
+    public int TransactionPercentage
     {
-        get => bscTransactionPercentage;
+        get => transactionPercentage;
         set
         {
-            if (value == bscTransactionPercentage) return;
-            bscTransactionPercentage = value;
+            if (value == transactionPercentage) return;
+            transactionPercentage = value;
             OnPropertyChanged();
         }
     }
@@ -184,47 +183,56 @@ public class WindowViewModel : INotifyPropertyChanged
 
     public ICommand BscStableToUnstableCommand { get; }
 
+    public ICommand AvalancheUnstableToStableCommand { get; }
+
+    public ICommand AvalancheStableToUnstableCommand { get; }
+
     public ICommand BscBridgeStableCommand { get; }
 
     public ObservableCollection<string> ImportantNotices { get; } = new();
-
-    public int AvalancheTransactionPercentage
-    {
-        get => avalancheTransactionPercentage;
-        set
-        {
-            if (value == avalancheTransactionPercentage) return;
-            avalancheTransactionPercentage = value;
-            OnPropertyChanged();
-        }
-    }
 
     public WindowViewModel()
     {
         BscUnstableToStableCommand = new RelayCommand(BscUnstableToStable);
         BscStableToUnstableCommand = new RelayCommand(BscStableToUnstable);
+        AvalancheUnstableToStableCommand = new RelayCommand(AvalancheUnstableToStable);
+        AvalancheStableToUnstableCommand = new RelayCommand(AvalancheStableToUnstable);
         BscBridgeStableCommand = new RelayCommand(BscBridgeStable);
     }
 
     private void BscBridgeStable(object? parameter)
     {
-        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
                                BlockchainName.Bsc,
                                TransactionType.BridgeStable));
     }
 
     private void BscUnstableToStable(object? parameter)
     {
-        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
                                BlockchainName.Bsc,
                                TransactionType.UnstableToStable));
     }
 
     private void BscStableToUnstable(object? parameter)
     {
-        OnTransactionInitiated(new TransactionEventArgs(BscTransactionPercentage,
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
                                BlockchainName.Bsc,
                                TransactionType.StableToUnstable));
+    }
+
+    private void AvalancheUnstableToStable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.UnstableToStable));
+    }
+
+    private void AvalancheStableToUnstable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.StableToUnstable));
     }
 
     public event EventHandler<TransactionEventArgs>? TransactionInitiated;

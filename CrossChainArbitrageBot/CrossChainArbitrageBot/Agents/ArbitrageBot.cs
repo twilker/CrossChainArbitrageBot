@@ -41,13 +41,13 @@ namespace CrossChainArbitrageBot.Agents
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol} on BSC"));
                             OnMessage(new TradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
                                                           lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                                          TradingPlatform.PancakeSwap));
+                                                          TradingPlatform.PancakeSwap, lastUpdate.StableDecimals));
                             break;
                         case TransactionType.UnstableToStable:
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol} on BSC"));
                             OnMessage(new TradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
                                                                      lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                                                     TradingPlatform.PancakeSwap));
+                                                                     TradingPlatform.PancakeSwap, lastUpdate.UnstableDecimals));
                             break;
                         case TransactionType.BridgeStable:
                             DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
@@ -63,20 +63,20 @@ namespace CrossChainArbitrageBot.Agents
                     }
                     break;
                 case BlockchainName.Avalanche:
-                    lastUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
+                    lastUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
                     switch (set.Message2.Type)
                     {
                         case TransactionType.StableToUnstable:
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} for {lastUpdate.UnstableSymbol} on Avalanche"));
                             OnMessage(new TradeInitiating(set, lastUpdate.StableId, lastUpdate.UnstableId,
                                                           lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                                          TradingPlatform.TraderJoe));
+                                                          TradingPlatform.TraderJoe, lastUpdate.StableDecimals));
                             break;
                         case TransactionType.UnstableToStable:
                             OnMessage(new ImportantNotice(set, $"Trading {lastUpdate.UnstableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.UnstableSymbol} for {lastUpdate.StableSymbol} on Avalanche"));
                             OnMessage(new TradeInitiating(set, lastUpdate.UnstableId, lastUpdate.StableId,
                                                                      lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                                                     TradingPlatform.TraderJoe));
+                                                                     TradingPlatform.TraderJoe, lastUpdate.UnstableDecimals));
                             break;
                         case TransactionType.BridgeStable:
                             throw new InvalidOperationException("Not Implemented.");

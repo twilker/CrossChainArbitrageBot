@@ -17,6 +17,6 @@ public static class Extensions
             }
         }
 
-        return Math.Floor(amount * Math.Pow(10, i)) / Math.Pow(10, i);
+        return Math.Floor(amount * Math.Pow(10, i-1)) / Math.Pow(10, i-1);
     }
 }

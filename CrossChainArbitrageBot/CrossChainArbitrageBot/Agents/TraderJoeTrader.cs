@@ -44,7 +44,7 @@ public class TraderJoeTrader : Agent
 
             HexBigInteger gas = new( 300000);
             BigInteger amount =
-                Web3.Convert.ToWei(set.Message2.Amount.RoundedAmount());
+                Web3.Convert.ToWei(set.Message2.Amount.RoundedAmount(), set.Message2.FromTokenDecimals);
             
             object[] parameters = {
                 amount,

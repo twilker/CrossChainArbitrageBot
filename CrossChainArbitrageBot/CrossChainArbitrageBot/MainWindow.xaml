@@ -59,7 +59,7 @@
         <TextBlock Grid.Row="3" Grid.Column="0"
                    HorizontalAlignment="Center">
             <TextBlock.Text>
-                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                <MultiBinding StringFormat="{}{0} Amount: {1:F3}">
                     <Binding Path="BscUnstableToken"/>
                     <Binding Path="BscUnstableAmount"/>
                 </MultiBinding>
@@ -68,7 +68,7 @@
         <TextBlock Grid.Row="3" Grid.Column="1"
                    HorizontalAlignment="Center">
             <TextBlock.Text>
-                <MultiBinding StringFormat="{}{0} Amount: {1:F2}">
+                <MultiBinding StringFormat="{}{0} Amount: {1:F3}">
                     <Binding Path="AvalancheUnstableToken"/>
                     <Binding Path="AvalancheUnstableAmount"/>
                 </MultiBinding>
@@ -101,11 +101,11 @@
                    HorizontalAlignment="Center"
                    Text="{Binding AvalancheAccountBalance, StringFormat={}AVAX Amount: {0:F4}}"/>
         
-        <DockPanel Grid.Row="6" Grid.Column="0"
-            VerticalAlignment="Center" Margin="10">
+        <DockPanel Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+            VerticalAlignment="Center" Margin="10" HorizontalAlignment="Center">
             <TextBox Text="{Binding ElementName=slValue, Path=Value, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" TextAlignment="Right" Width="40" />
             <Slider Maximum="100" TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="True" Name="slValue" 
-                    Value="{Binding BscTransactionPercentage}"/>
+                    Value="{Binding TransactionPercentage}"  Width="400" Margin="0,0,20,0"/>
         </DockPanel>
         
         <Button Grid.Row="7" Grid.Column="0"
@@ -137,6 +137,36 @@
                 </TextBlock>
             </Button.Content>
         </Button>
+        
+        <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheStableToUnstableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} -> {1}">
+                                <Binding Path="AvalancheStableToken"/>
+                                <Binding Path="AvalancheUnstableToken"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </Button.Content>
+            </Button>
+        
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheUnstableToStableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} -> {1}">
+                                <Binding Path="AvalancheUnstableToken"/>
+                                <Binding Path="AvalancheStableToken"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </Button.Content>
+            </Button>
+        </StackPanel>
         
         <Button Grid.Row="9" Grid.Column="0"
             HorizontalAlignment="Center" Margin="10"
