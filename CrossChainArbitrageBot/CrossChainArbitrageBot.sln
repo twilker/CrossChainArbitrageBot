@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.32126.317
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossChainArbitrageBot", "CrossChainArbitrageBot\CrossChainArbitrageBot.csproj", "{6EC9B6B7-0C05-4649-A3C9-DF4A2CEB9527}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataLogger", "DataLogger\DataLogger.csproj", "{91B89D73-E517-4BBA-B210-27A98CF75335}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{6EC9B6B7-0C05-4649-A3C9-DF4A2CEB9527}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EC9B6B7-0C05-4649-A3C9-DF4A2CEB9527}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EC9B6B7-0C05-4649-A3C9-DF4A2CEB9527}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91B89D73-E517-4BBA-B210-27A98CF75335}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91B89D73-E517-4BBA-B210-27A98CF75335}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91B89D73-E517-4BBA-B210-27A98CF75335}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91B89D73-E517-4BBA-B210-27A98CF75335}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
