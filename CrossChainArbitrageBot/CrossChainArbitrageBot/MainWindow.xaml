@@ -168,6 +168,24 @@
             </Button>
         </StackPanel>
         
+        <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheBridgeStableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center">
+                        <TextBlock HorizontalAlignment="Center" Text="{Binding AvalancheStableToken, StringFormat={}Bridge {0}}" />
+                    </TextBlock>
+                </Button.Content>
+            </Button>
+        
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheBridgeUnstableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center" Text="{Binding AvalancheUnstableToken, StringFormat={}Bridge {0}}" />
+                </Button.Content>
+            </Button>
+        </StackPanel>
+        
         <Button Grid.Row="9" Grid.Column="0"
             HorizontalAlignment="Center" Margin="10"
                 Command="{Binding BscBridgeStableCommand}">

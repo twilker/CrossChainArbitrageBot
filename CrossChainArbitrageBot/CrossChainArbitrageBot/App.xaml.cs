@@ -76,6 +76,7 @@ namespace CrossChainArbitrageBot
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },
                 {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
                 {"AnySwap", File.ReadAllText("./Abis/AnySwap.json") },
+                {"Celer", File.ReadAllText("./Abis/Celer.json") },
             };
             Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
                                      account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 43114));
@@ -87,6 +88,7 @@ namespace CrossChainArbitrageBot
                 {"Pair", File.ReadAllText("./Abis/Pair.json") },
                 {"AnySwap", File.ReadAllText("./Abis/AnySwap.json") },
                 {"TraderJoe", File.ReadAllText("./Abis/TraderJoe.json") },
+                {"Celer", File.ReadAllText("./Abis/Celer.json") },
             };
             messageBoard.Publish(new BlockchainConnected(new BlockchainConnection(BlockchainName.Bsc, bscConnector, bscAbis),
                                                          new BlockchainConnection(BlockchainName.Avalanche, avaxConnector, avaxAbis)));

@@ -14,6 +14,8 @@ namespace CrossChainArbitrageBot
             builder.RegisterType<ArbitrageBot>().As<Agent>().InstancePerLifetimeScope();
             builder.RegisterType<TraderJoeTrader>().As<Agent>().InstancePerLifetimeScope();
             builder.RegisterType<StableTokenBridge>().As<Agent>().InstancePerLifetimeScope();
+            builder.RegisterType<UnstableTokenBridge>().As<Agent>().InstancePerLifetimeScope();
+            builder.RegisterType<BlockchainExecuter>().As<Agent>().InstancePerLifetimeScope();
             builder.RegisterType<MessageBoard>().As<IMessageBoard>().InstancePerLifetimeScope();
             builder.RegisterType<MainWindow>().AsSelf().InstancePerLifetimeScope();
         }

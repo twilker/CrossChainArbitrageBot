@@ -10,7 +10,7 @@ namespace CrossChainArbitrageBot.Agents
     [Consumes(typeof(TransactionStarted))]
     [Consumes(typeof(DataUpdated))]
     [Consumes(typeof(TradeCompleted))]
-    [Consumes(typeof(StableTokenBridged))]
+    [Consumes(typeof(TokenBridged))]
     [Produces(typeof(TradeInitiating))]
     [Produces(typeof(TransactionFinished))]
     internal class ArbitrageBot : Agent
@@ -51,10 +51,19 @@ namespace CrossChainArbitrageBot.Agents
                             break;
                         case TransactionType.BridgeStable:
                             DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
-                            OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount:F2} {lastUpdate.StableSymbol} to Avalanche"));
-                            OnMessage(new StableTokenBridging(set, BlockchainName.Bsc,
+                            OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to Avalanche"));
+                            OnMessage(new TokenBridging(set, BlockchainName.Bsc,
                                                               lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                                              targetUpdate.StableAmount));
+                                                              targetUpdate.StableAmount, TokenType.Stable, 
+                                          lastUpdate.WalletAddress, lastUpdate.StableDecimals));
+                            break;
+                        case TransactionType.BridgeUnstable:
+                            targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
+                            OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to Avalanche"));
+                            OnMessage(new TokenBridging(set, BlockchainName.Bsc,
+                                                              lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
+                                                              targetUpdate.UnstableAmount, TokenType.Unstable, 
+                                          lastUpdate.WalletAddress, lastUpdate.UnstableDecimals));
                             break;
                         case TransactionType.StableToGas:
                             throw new InvalidOperationException("Not Implemented.");
@@ -79,7 +88,21 @@ namespace CrossChainArbitrageBot.Agents
                                                                      TradingPlatform.TraderJoe, lastUpdate.UnstableDecimals));
                             break;
                         case TransactionType.BridgeStable:
-                            throw new InvalidOperationException("Not Implemented.");
+                            DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
+                            OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to BSC"));
+                            OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
+                                                        lastUpdate.StableAmount * set.Message2.TransactionAmount,
+                                                        targetUpdate.StableAmount, TokenType.Stable, 
+                                                        lastUpdate.WalletAddress, lastUpdate.StableDecimals));
+                            break;
+                        case TransactionType.BridgeUnstable:
+                            targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
+                            OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to BSC"));
+                            OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
+                                                        lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
+                                                        targetUpdate.UnstableAmount, TokenType.Unstable, 
+                                                        lastUpdate.WalletAddress, lastUpdate.UnstableDecimals));
+                            break;
                         case TransactionType.StableToGas:
                             throw new InvalidOperationException("Not Implemented.");
                         default:
@@ -105,7 +128,7 @@ namespace CrossChainArbitrageBot.Agents
                 return;
             }
 
-            if(messageData.TryGet(out StableTokenBridged tokenBridged))
+            if(messageData.TryGet(out TokenBridged tokenBridged))
             {
                 if (tokenBridged.Success)
                 {

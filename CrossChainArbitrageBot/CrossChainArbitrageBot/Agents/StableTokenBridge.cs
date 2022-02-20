@@ -14,20 +14,24 @@ using Nethereum.Web3;
 
 namespace CrossChainArbitrageBot.Agents
 {
-    [Consumes(typeof(StableTokenBridging))]
+    [Consumes(typeof(TokenBridging))]
     [Consumes(typeof(BlockchainConnected))]
     internal class StableTokenBridge : Agent
     {
-        private readonly MessageCollector<BlockchainConnected, StableTokenBridging> collector;
+        private readonly MessageCollector<BlockchainConnected, TokenBridging> collector;
 
         public StableTokenBridge(IMessageBoard messageBoard) : base(messageBoard)
         {
-            collector = new MessageCollector<BlockchainConnected, StableTokenBridging>(OnMessage);
+            collector = new MessageCollector<BlockchainConnected, TokenBridging>(OnMessage);
         }
 
-        private void OnMessage(MessageCollection<BlockchainConnected, StableTokenBridging> set)
+        private void OnMessage(MessageCollection<BlockchainConnected, TokenBridging> set)
         {
             set.MarkAsConsumed(set.Message2);
+            if (set.Message2.TokenType != TokenType.Stable)
+            {
+                return;
+            }
 
             try
             {
@@ -70,25 +74,25 @@ namespace CrossChainArbitrageBot.Agents
                 Task<TransactionReceipt>? receipt = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(bridgeCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
                 receipt.Wait();
                 OnMessage(new ImportantNotice(set, $"[BRIDGE] TX ID: {bridgeCall.Result} receipt: {receipt.Result}"));
-                OnMessage(new StableTokenBridged(set, receipt.Result.Status.Value == 1, set.Message2.Amount, set.Message2.OriginalTargetAmount,
+                OnMessage(new TokenBridged(set, receipt.Result.Status.Value == 1, set.Message2.Amount, set.Message2.OriginalTargetAmount,
                                                  set.Message2.SourceChain switch
                                                  {
                                                      BlockchainName.Bsc => BlockchainName.Avalanche,
                                                      BlockchainName.Avalanche => BlockchainName.Bsc,
                                                      _ => throw new InvalidOperationException("Not implemented.")
-                                                 }));
+                                                 }, TokenType.Stable));
             }
             catch (Exception e)
             {
                 OnMessage(new ImportantNotice(set, $"Error bridging {e}"));
 
-                OnMessage(new StableTokenBridged(set, false, set.Message2.Amount, set.Message2.OriginalTargetAmount,
+                OnMessage(new TokenBridged(set, false, set.Message2.Amount, set.Message2.OriginalTargetAmount,
                                                  set.Message2.SourceChain switch
                                                  {
                                                      BlockchainName.Bsc => BlockchainName.Avalanche,
                                                      BlockchainName.Avalanche => BlockchainName.Bsc,
                                                      _ => throw new InvalidOperationException("Not implemented.")
-                                                 }));
+                                                 }, TokenType.Stable));
             }
         }
 

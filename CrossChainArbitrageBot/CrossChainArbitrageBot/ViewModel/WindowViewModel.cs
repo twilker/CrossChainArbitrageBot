@@ -187,6 +187,10 @@ public class WindowViewModel : INotifyPropertyChanged
 
     public ICommand AvalancheStableToUnstableCommand { get; }
 
+    public ICommand AvalancheBridgeStableCommand { get; }
+
+    public ICommand AvalancheBridgeUnstableCommand { get; }
+
     public ICommand BscBridgeStableCommand { get; }
 
     public ObservableCollection<string> ImportantNotices { get; } = new();
@@ -198,6 +202,22 @@ public class WindowViewModel : INotifyPropertyChanged
         AvalancheUnstableToStableCommand = new RelayCommand(AvalancheUnstableToStable);
         AvalancheStableToUnstableCommand = new RelayCommand(AvalancheStableToUnstable);
         BscBridgeStableCommand = new RelayCommand(BscBridgeStable);
+        AvalancheBridgeStableCommand = new RelayCommand(AvalancheBridgeStable);
+        AvalancheBridgeUnstableCommand = new RelayCommand(AvalancheBridgeUnstable);
+    }
+
+    private void AvalancheBridgeUnstable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.BridgeUnstable));
+    }
+
+    private void AvalancheBridgeStable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.BridgeStable));
     }
 
     private void BscBridgeStable(object? parameter)
