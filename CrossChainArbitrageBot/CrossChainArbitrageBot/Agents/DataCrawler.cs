@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,15 +35,18 @@ namespace CrossChainArbitrageBot.Agents
             {
                 string unstableId;
                 string stableId;
+                string nativeId;
                 switch (connection.BlockchainName)
                 {
                     case BlockchainName.Bsc:
                         unstableId = ConfigurationManager.AppSettings["BscUnstableCoinId"]??throw new ConfigurationErrorsException("BscUnstableCoinId not found");
                         stableId = ConfigurationManager.AppSettings["BscStableCoinId"]??throw new ConfigurationErrorsException("BscStableCoinId not found");
+                        nativeId = ConfigurationManager.AppSettings["BscNativeCoinId"]??throw new ConfigurationErrorsException("BscNativeCoinId not found");
                         break;
                     case BlockchainName.Avalanche:
                         unstableId = ConfigurationManager.AppSettings["AvalancheUnstableCoinId"] ?? throw new ConfigurationErrorsException("AvalancheUnstableCoinId not found");
                         stableId = ConfigurationManager.AppSettings["AvalancheStableCoinId"] ?? throw new ConfigurationErrorsException("AvalancheStableCoinId not found");
+                        nativeId = ConfigurationManager.AppSettings["AvalancheNativeCoinId"] ?? throw new ConfigurationErrorsException("AvalancheNativeCoinId not found");
                         break;
                     default:
                         throw new InvalidOperationException("Not implemented.");
@@ -75,7 +79,8 @@ namespace CrossChainArbitrageBot.Agents
                 packages.Add(new DataUpdatePackage(connection.BlockchainName, 
                                                    unstableId, unstableCoin, unstableDecimals,
                                                    stableId, stableCoin, stableDecimals,
-                                                   connection.Connection.Eth, connection.Abis["Erc20"],
+                                                  nativeId, connection.Connection.Eth, 
+                                                   connection.Abis["Erc20"], connection.Abis["Pair"],
                                                    connection.Connection.TransactionManager.Account.Address));
             }
 
@@ -99,6 +104,12 @@ namespace CrossChainArbitrageBot.Agents
                         };
                         Erc20Price unstablePrice = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
                             chain);
+                        
+                        Erc20Price nativePriceInfo = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.NativeCoinId,
+                            chain);
+                        double nativePrice = (double)(nativePriceInfo.UsdPrice ?? 0);
+
+                        Liquidity liquidity = GetLiquidity(updatePackage, nativePrice);
 
                         Task<BigInteger> balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
                                                                          updatePackage.UnstableCoinId)
@@ -122,9 +133,11 @@ namespace CrossChainArbitrageBot.Agents
                                                        (double)unstableAmount, updatePackage.UnstableCoinSymbol,
                                                        updatePackage.UnstableCoinId,
                                                        updatePackage.UnstableDecimals,
+                                                       liquidity,
                                                        (double)stableAmount, updatePackage.StableCoinSymbol,
                                                        updatePackage.StableCoinId,
                                                        updatePackage.StableDecimals,
+                                                       nativePrice,
                                                        (double)accountBalance,
                                                        updatePackage.WalletAddress));
                     }
@@ -139,10 +152,85 @@ namespace CrossChainArbitrageBot.Agents
             }
         }
 
-        public readonly record struct DataUpdatePackage(BlockchainName BlockchainName, 
-                                                        string UnstableCoinId, string UnstableCoinSymbol, int UnstableDecimals,
-                                                        string StableCoinId, string StableCoinSymbol, int StableDecimals, 
+        private Liquidity GetLiquidity(DataUpdatePackage updatePackage, double nativePrice)
+        {
+            bool isNativePair;
+            string pairAddress;
+            switch (updatePackage.BlockchainName)
+            {
+                case BlockchainName.Bsc:
+                    if (ConfigurationManager.AppSettings.AllKeys.Contains("BscUnstableBNBPairId"))
+                    {
+                        pairAddress = ConfigurationManager.AppSettings["BscUnstableBNBPairId"] ?? string.Empty;
+                        isNativePair = true;
+                    }
+                    else
+                    {
+                        return new Liquidity();
+                    }
+                    break;
+                case BlockchainName.Avalanche:
+                    if (ConfigurationManager.AppSettings.AllKeys.Contains("AvalancheUnstableAVAXPairId"))
+                    {
+                        pairAddress = ConfigurationManager.AppSettings["AvalancheUnstableAVAXPairId"] ?? string.Empty;
+                        isNativePair = true;
+                    }
+                    else
+                    {
+                        return new Liquidity();
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException("Not Implemented");
+            }
+            
+            Task<Reserves>? reservesCall = updatePackage.ContractService.GetContract(updatePackage.PairAbi,
+                                                                                     pairAddress)
+                                                        .GetFunction("getReserves")
+                                                        .CallDeserializingToObjectAsync<Reserves>();
+            if (reservesCall == null)
+            {
+                throw new InvalidOperationException("Reserves call not found.");
+            }
+            reservesCall.Wait();
+            
+            Task<string>? token0Call = updatePackage.ContractService.GetContract(updatePackage.PairAbi,
+                                                             pairAddress)
+                                                        .GetFunction("token0")
+                                                        .CallAsync<string>();
+            if (token0Call == null)
+            {
+                throw new InvalidOperationException("Token0 reserves call not found.");
+            }
+            token0Call.Wait();
+
+            BigInteger tokenReserve =
+                token0Call.Result.Equals(updatePackage.UnstableCoinId, StringComparison.OrdinalIgnoreCase)
+                    ? reservesCall.Result.Reserve0
+                    : reservesCall.Result.Reserve1;
+            
+            BigInteger pairedReserve =
+                token0Call.Result.Equals(updatePackage.UnstableCoinId, StringComparison.OrdinalIgnoreCase)
+                    ? reservesCall.Result.Reserve1
+                    : reservesCall.Result.Reserve0;
+            
+            decimal tokenAmount = Web3.Convert.FromWei(tokenReserve, updatePackage.UnstableDecimals);
+            if (isNativePair)
+            {
+                decimal nativeAmount = Web3.Convert.FromWei(pairedReserve);
+                double usdValue = nativePrice * (double)nativeAmount;
+                return new Liquidity((double)tokenAmount, usdValue);
+            }
+
+            throw new InvalidOperationException("Not implemented.");
+        }
+
+        public readonly record struct DataUpdatePackage(BlockchainName BlockchainName,
+                                                        string UnstableCoinId, string UnstableCoinSymbol,
+                                                        int UnstableDecimals,
+                                                        string StableCoinId, string StableCoinSymbol,
+                                                        int StableDecimals, string NativeCoinId,
                                                         IEthApiContractService ContractService, string TokenAbi,
-                                                        string WalletAddress);
+                                                        string PairAbi, string WalletAddress);
     }
 }

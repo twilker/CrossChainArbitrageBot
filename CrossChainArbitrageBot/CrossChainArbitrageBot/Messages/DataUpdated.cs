@@ -26,5 +26,8 @@ public class DataUpdated : Message
 
 public readonly record struct DataUpdate(BlockchainName BlockchainName, double UnstablePrice, double UnstableAmount,
                                          string UnstableSymbol, string UnstableId, int UnstableDecimals, 
-                                         double StableAmount, string StableSymbol, string StableId, int StableDecimals, 
+                                         Liquidity Liquidity, double StableAmount, string StableSymbol, 
+                                         string StableId, int StableDecimals, double NativePrice,
                                          double AccountBalance, string WalletAddress);
+                                         
+public readonly record struct Liquidity(double TokenAmount, double UsdPaired);

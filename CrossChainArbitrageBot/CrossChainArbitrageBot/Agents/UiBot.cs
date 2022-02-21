@@ -46,6 +46,8 @@ namespace CrossChainArbitrageBot.Agents
             WindowViewModel viewModel = (WindowViewModel)mainWindow.DataContext;
             double bscPrice = 0;
             double avalanchePrice = 0;
+            Liquidity bscLiquidity = new Liquidity();
+            Liquidity avalancheLiquidity = new Liquidity();
             foreach (DataUpdate dataUpdate in updatedUpdates)
             {
                 switch (dataUpdate.BlockchainName)
@@ -58,6 +60,7 @@ namespace CrossChainArbitrageBot.Agents
                         viewModel.BscUnstablePrice = dataUpdate.UnstablePrice;
                         viewModel.BscUnstableToken = dataUpdate.UnstableSymbol;
                         viewModel.BscAccountBalance = dataUpdate.AccountBalance;
+                        bscLiquidity = dataUpdate.Liquidity;
                         break;
                     case BlockchainName.Avalanche:
                         avalanchePrice = dataUpdate.UnstablePrice;
@@ -67,13 +70,34 @@ namespace CrossChainArbitrageBot.Agents
                         viewModel.AvalancheUnstablePrice = dataUpdate.UnstablePrice;
                         viewModel.AvalancheUnstableToken = dataUpdate.UnstableSymbol;
                         viewModel.AvalancheAccountBalance = dataUpdate.AccountBalance;
+                        avalancheLiquidity = dataUpdate.Liquidity;
                         break;
                     default:
                         throw new InvalidOperationException("Not implemented.");
                 }
 
                 viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
+                viewModel.TargetSpread = Math.Abs(0.5 * viewModel.Spread); //dont know why, but this is the optimum
+                CalculateOptimalSpread(bscLiquidity, avalancheLiquidity, viewModel);
             }
+        }
+
+        private void CalculateOptimalSpread(Liquidity bscLiquidity, Liquidity avalancheLiquidity, WindowViewModel viewModel)
+        {
+            double bscConstant = Math.Sqrt(bscLiquidity.TokenAmount * bscLiquidity.UsdPaired);
+            double avalancheConstant = Math.Sqrt(avalancheLiquidity.TokenAmount * avalancheLiquidity.UsdPaired);
+            double targetSpread = viewModel.TargetSpread / 100;
+            double bscChange = (Math.Abs(viewModel.Spread) / 100 - targetSpread) *(avalancheConstant/(avalancheConstant+bscConstant));
+            viewModel.MaximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange);
+            viewModel.ProfitByMaximumVolume = viewModel.MaximumVolumeToTargetSpread * targetSpread;
+        }
+
+        private double CalculateVolumeSpreadOptimum(Liquidity liquidity, double targetSpreadChange)
+        {
+            double constant = liquidity.TokenAmount * liquidity.UsdPaired;
+            double currentPrice = liquidity.UsdPaired / liquidity.TokenAmount;
+            double targetPrice = currentPrice * (1 + targetSpreadChange);
+            return Math.Sqrt(targetPrice * constant) - liquidity.UsdPaired;
         }
 
         private void SubscribeToEvents()

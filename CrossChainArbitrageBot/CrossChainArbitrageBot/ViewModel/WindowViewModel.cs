@@ -11,6 +11,9 @@ namespace CrossChainArbitrageBot.ViewModel;
 public class WindowViewModel : INotifyPropertyChanged
 {
     private double spread;
+    private double targetSpread;
+    private double maximumVolumeToTargetSpread;
+    private double profitByMaximumVolume;
     private double bscUnstableAmount;
     private double bscStableAmount;
     private double bscUnstablePrice;
@@ -32,6 +35,39 @@ public class WindowViewModel : INotifyPropertyChanged
         {
             if (value.Equals(spread)) return;
             spread = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double TargetSpread
+    {
+        get => targetSpread;
+        set
+        {
+            if (value.Equals(targetSpread)) return;
+            targetSpread = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double MaximumVolumeToTargetSpread
+    {
+        get => maximumVolumeToTargetSpread;
+        set
+        {
+            if (value.Equals(maximumVolumeToTargetSpread)) return;
+            maximumVolumeToTargetSpread = value;
+            OnPropertyChanged();
+        }
+    }
+    
+    public double ProfitByMaximumVolume
+    {
+        get => profitByMaximumVolume;
+        set
+        {
+            if (value.Equals(profitByMaximumVolume)) return;
+            profitByMaximumVolume = value;
             OnPropertyChanged();
         }
     }
