@@ -8,6 +8,7 @@ using Moralis.Web3Api.Models;
 using Nethereum.Contracts.Services;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
+using Newtonsoft.Json.Linq;
 using Log = Serilog.Log;
 
 namespace DataLogger.Agents
@@ -93,8 +94,30 @@ namespace DataLogger.Agents
                             BlockchainName.Avalanche => ChainList.avalanche,
                             _ => throw new InvalidOperationException("Not implemented.")
                         };
-                        Erc20Price unstablePrice = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
-                            chain);
+                        double unstablePrice;
+                        if (updatePackage.BlockchainName == BlockchainName.Bsc)
+                        {
+                            Erc20Price unstablePriceInfo = MoralisClient.Web3Api.Token.GetTokenPrice(updatePackage.UnstableCoinId,
+                                chain);
+                            unstablePrice = (double)(unstablePriceInfo.UsdPrice ?? 0);
+                        }
+                        else
+                        {
+                            using HttpClient client = new HttpClient();
+                            Task<HttpResponseMessage> getCall = client.GetAsync("https://api.raydium.io/coin/price");
+                            getCall.Wait();
+                            if (getCall.Result.IsSuccessStatusCode)
+                            {
+                                Task<string> readCall = getCall.Result.Content.ReadAsStringAsync();
+                                readCall.Wait();
+                                JObject prices = JObject.Parse(readCall.Result);
+                                unstablePrice = prices["GENE"]?.Value<double>()??0;
+                            }
+                            else
+                            {
+                                unstablePrice = 0;
+                            }
+                        }
 
                         Task<BigInteger> balanceCall = updatePackage.ContractService.GetContract(updatePackage.TokenAbi,
                                                                          updatePackage.UnstableCoinId)
@@ -114,7 +137,7 @@ namespace DataLogger.Agents
                         accountBalanceCall.Wait();
                         decimal accountBalance = Web3.Convert.FromWei(accountBalanceCall.Result.Value);
                         dataUpdates.Add(new DataUpdate(updatePackage.BlockchainName,
-                                                       (double)(unstablePrice.UsdPrice ?? 0),
+                                                       unstablePrice,
                                                        (double)unstableAmount, updatePackage.UnstableCoinSymbol,
                                                        updatePackage.UnstableCoinId,
                                                        updatePackage.UnstableDecimals,
