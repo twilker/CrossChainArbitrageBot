@@ -88,7 +88,7 @@ namespace CrossChainArbitrageBot.Agents
             double avalancheConstant = Math.Sqrt(avalancheLiquidity.TokenAmount * avalancheLiquidity.UsdPaired);
             double targetSpread = viewModel.TargetSpread / 100;
             double bscChange = (Math.Abs(viewModel.Spread) / 100 - targetSpread) *(avalancheConstant/(avalancheConstant+bscConstant));
-            viewModel.MaximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange);
+            viewModel.MaximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
             viewModel.ProfitByMaximumVolume = viewModel.MaximumVolumeToTargetSpread * targetSpread;
         }
 
