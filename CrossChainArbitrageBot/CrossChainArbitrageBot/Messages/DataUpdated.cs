@@ -30,4 +30,4 @@ public readonly record struct DataUpdate(BlockchainName BlockchainName, double U
                                          string StableId, int StableDecimals, double NativePrice,
                                          double AccountBalance, string WalletAddress);
                                          
-public readonly record struct Liquidity(double TokenAmount, double UsdPaired);
+public readonly record struct Liquidity(double TokenAmount, double UsdPaired, string PairedTokenId);

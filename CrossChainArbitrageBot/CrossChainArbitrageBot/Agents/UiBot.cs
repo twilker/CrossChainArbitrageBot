@@ -89,7 +89,27 @@ namespace CrossChainArbitrageBot.Agents
             double targetSpread = viewModel.TargetSpread / 100;
             double bscChange = (Math.Abs(viewModel.Spread) / 100 - targetSpread) *(avalancheConstant/(avalancheConstant+bscConstant));
             viewModel.MaximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
-            viewModel.ProfitByMaximumVolume = viewModel.MaximumVolumeToTargetSpread * targetSpread;
+            viewModel.ProfitByMaximumVolume = SimulateOptimalSellAndBuy(bscLiquidity, avalancheLiquidity, viewModel.MaximumVolumeToTargetSpread/2, viewModel.Spread > 0);
+        }
+
+        private static double SimulateOptimalSellAndBuy(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double volume, bool buyOnBsc)
+        {
+            (double buyTokenAmount, double buyUsdPaired, _) = buyOnBsc ? bscLiquidity : avalancheLiquidity;
+            (double sellTokenAmount, double sellUsdPaired, _) = buyOnBsc ? avalancheLiquidity : bscLiquidity;
+            double tokenAmount = volume / (buyUsdPaired / buyTokenAmount);
+            
+            //simulate buy
+            double newUsd = buyUsdPaired + volume;
+            double newToken = buyTokenAmount * buyUsdPaired / newUsd;
+            double tokenReceived = buyTokenAmount - newToken;
+            
+            //simulate sell
+            newToken = sellTokenAmount + tokenAmount;
+            newUsd = sellTokenAmount * sellUsdPaired / newToken;
+            double soldValue = sellUsdPaired - newUsd;
+            double boughtValue = tokenReceived * newUsd / newToken;
+
+            return boughtValue + soldValue - volume - tokenAmount * sellUsdPaired / sellTokenAmount;
         }
 
         private double CalculateVolumeSpreadOptimum(Liquidity liquidity, double targetSpreadChange)
