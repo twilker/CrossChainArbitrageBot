@@ -75,21 +75,41 @@ namespace CrossChainArbitrageBot.Agents
                     default:
                         throw new InvalidOperationException("Not implemented.");
                 }
-
-                viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
-                viewModel.TargetSpread = Math.Abs(0.5 * viewModel.Spread); //dont know why, but this is the optimum
-                CalculateOptimalSpread(bscLiquidity, avalancheLiquidity, viewModel);
             }
+
+            viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
+            if (double.IsPositiveInfinity(viewModel.Spread) ||
+                double.IsNegativeInfinity(viewModel.Spread) ||
+                double.IsNaN(viewModel.Spread))
+            {
+                return;
+            }
+            SpreadProfit optimal = new SpreadProfit();
+            for (double targetSpread = 0; targetSpread < Math.Abs(viewModel.Spread); targetSpread+=0.05)
+            {
+                SpreadProfit profit = CalculateOptimalSpread(bscLiquidity, avalancheLiquidity,
+                                                             viewModel.Spread, targetSpread);
+                if (profit.OptimalProfit > optimal.OptimalProfit)
+                {
+                    optimal = profit;
+                }
+            }
+
+            viewModel.TargetSpread = optimal.TargetSpread;
+            viewModel.MaximumVolumeToTargetSpread = optimal.OptimalVolume;
+            viewModel.ProfitByMaximumVolume = optimal.OptimalProfit;
         }
 
-        private void CalculateOptimalSpread(Liquidity bscLiquidity, Liquidity avalancheLiquidity, WindowViewModel viewModel)
+        private readonly record struct SpreadProfit(double OptimalVolume, double OptimalProfit, double TargetSpread);
+
+        private SpreadProfit CalculateOptimalSpread(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double spread, double targetSpread)
         {
             double bscConstant = Math.Sqrt(bscLiquidity.TokenAmount * bscLiquidity.UsdPaired);
             double avalancheConstant = Math.Sqrt(avalancheLiquidity.TokenAmount * avalancheLiquidity.UsdPaired);
-            double targetSpread = viewModel.TargetSpread / 100;
-            double bscChange = (Math.Abs(viewModel.Spread) / 100 - targetSpread) *(avalancheConstant/(avalancheConstant+bscConstant));
-            viewModel.MaximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
-            viewModel.ProfitByMaximumVolume = SimulateOptimalSellAndBuy(bscLiquidity, avalancheLiquidity, viewModel.MaximumVolumeToTargetSpread/2, viewModel.Spread > 0);
+            double bscChange = (Math.Abs(spread) / 100 - targetSpread / 100) *(avalancheConstant/(avalancheConstant+bscConstant));
+            double maximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
+            double profitByMaximumVolume = SimulateOptimalSellAndBuy(bscLiquidity, avalancheLiquidity, maximumVolumeToTargetSpread/2, spread > 0);
+            return new SpreadProfit(maximumVolumeToTargetSpread, profitByMaximumVolume, targetSpread);
         }
 
         private static double SimulateOptimalSellAndBuy(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double volume, bool buyOnBsc)
