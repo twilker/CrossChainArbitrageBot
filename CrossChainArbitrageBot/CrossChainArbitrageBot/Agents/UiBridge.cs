@@ -9,12 +9,12 @@ namespace CrossChainArbitrageBot.Agents;
 [Consumes(typeof(MainWindowCreated))]
 [Consumes(typeof(DataUpdated))]
 [Consumes(typeof(ImportantNotice))]
-internal class UiBot : Agent
+internal class UiBridge : Agent
 {
     private MainWindow mainWindow;
     private MainWindowCreated mainWindowCreated;
 
-    public UiBot(IMessageBoard messageBoard) : base(messageBoard)
+    public UiBridge(IMessageBoard messageBoard) : base(messageBoard)
     {
     }
 

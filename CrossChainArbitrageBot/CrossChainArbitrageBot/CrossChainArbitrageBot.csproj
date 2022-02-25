@@ -50,6 +50,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CrossChainArbitrageBot.Base\CrossChainArbitrageBot.Base.csproj" />
+    <ProjectReference Include="..\CrossChainArbitrageBot.Simulation\CrossChainArbitrageBot.Simulation.csproj" />
   </ItemGroup>
 
 </Project>
