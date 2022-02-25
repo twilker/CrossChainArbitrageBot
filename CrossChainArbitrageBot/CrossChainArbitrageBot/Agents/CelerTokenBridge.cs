@@ -15,14 +15,14 @@ namespace CrossChainArbitrageBot.Agents;
 
 [Consumes(typeof(TokenBridging))]
 [Consumes(typeof(TransactionExecuted))]
-public class UnstableTokenBridge : Agent
+public class CelerTokenBridge : Agent
 {
     private const string CovalentTransactionApi =
         "https://api.covalenthq.com/v1/{0}/address/{1}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number={2}&page-size={3}&key={4}";
 
     private readonly Random random = new();
 
-    public UnstableTokenBridge(IMessageBoard messageBoard, string name = null) : base(messageBoard, name)
+    public CelerTokenBridge(IMessageBoard messageBoard, string name = null) : base(messageBoard, name)
     {
     }
 

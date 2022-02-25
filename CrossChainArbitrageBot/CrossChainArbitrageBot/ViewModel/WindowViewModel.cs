@@ -228,6 +228,16 @@ public class WindowViewModel : INotifyPropertyChanged
     public ICommand AvalancheBridgeUnstableCommand { get; }
 
     public ICommand BscBridgeStableCommand { get; }
+    
+    public ICommand BscBridgeUnstableCommand { get; }
+    
+    public ICommand BscStableToNativeCommand { get; }
+    
+    public ICommand BscUnstableToNativeCommand { get; }
+    
+    public ICommand AvalancheStableToNativeCommand { get; }
+    
+    public ICommand AvalancheUnstableToNativeCommand { get; }
 
     public ObservableCollection<string> ImportantNotices { get; } = new();
 
@@ -238,8 +248,41 @@ public class WindowViewModel : INotifyPropertyChanged
         AvalancheUnstableToStableCommand = new RelayCommand(AvalancheUnstableToStable);
         AvalancheStableToUnstableCommand = new RelayCommand(AvalancheStableToUnstable);
         BscBridgeStableCommand = new RelayCommand(BscBridgeStable);
+        BscBridgeUnstableCommand = new RelayCommand(BscBridgeUnstable);
         AvalancheBridgeStableCommand = new RelayCommand(AvalancheBridgeStable);
         AvalancheBridgeUnstableCommand = new RelayCommand(AvalancheBridgeUnstable);
+        BscStableToNativeCommand = new RelayCommand(BscStableToNative);
+        BscUnstableToNativeCommand = new RelayCommand(BscUnstableToNative);
+        AvalancheStableToNativeCommand = new RelayCommand(AvalancheStableToNative);
+        AvalancheUnstableToNativeCommand = new RelayCommand(AvalancheUnstableToNative);
+    }
+
+    private void BscStableToNative(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Bsc,
+                                                        TransactionType.StableToNative));
+    }
+
+    private void BscUnstableToNative(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Bsc,
+                                                        TransactionType.UnstableToNative));
+    }
+
+    private void AvalancheStableToNative(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.StableToNative));
+    }
+
+    private void AvalancheUnstableToNative(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                                                        BlockchainName.Avalanche,
+                                                        TransactionType.UnstableToNative));
     }
 
     private void AvalancheBridgeUnstable(object? parameter)
@@ -254,6 +297,13 @@ public class WindowViewModel : INotifyPropertyChanged
         OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
                                                         BlockchainName.Avalanche,
                                                         TransactionType.BridgeStable));
+    }
+
+    private void BscBridgeUnstable(object? parameter)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionPercentage,
+                               BlockchainName.Bsc,
+                               TransactionType.BridgeUnstable));
     }
 
     private void BscBridgeStable(object? parameter)

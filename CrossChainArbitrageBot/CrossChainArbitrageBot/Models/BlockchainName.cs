@@ -1,8 +1,7 @@
-﻿namespace CrossChainArbitrageBot.Models
+﻿namespace CrossChainArbitrageBot.Models;
+
+public enum BlockchainName
 {
-    public enum BlockchainName
-    {
-        Bsc,
-        Avalanche
-    }
+    Bsc,
+    Avalanche
 }

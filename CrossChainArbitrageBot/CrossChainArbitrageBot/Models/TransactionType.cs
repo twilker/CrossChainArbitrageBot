@@ -1,11 +1,11 @@
-﻿namespace CrossChainArbitrageBot.Models
+﻿namespace CrossChainArbitrageBot.Models;
+
+public enum TransactionType
 {
-    public enum TransactionType
-    {
-        StableToUnstable,
-        UnstableToStable,
-        BridgeStable,
-        BridgeUnstable,
-        StableToGas
-    }
+    StableToUnstable,
+    UnstableToStable,
+    BridgeStable,
+    BridgeUnstable,
+    StableToNative,
+    UnstableToNative
 }

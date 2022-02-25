@@ -120,36 +120,36 @@
             <Slider Maximum="100" TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="True" Name="slValue" 
                     Value="{Binding TransactionPercentage}"  Width="400" Margin="0,0,20,0"/>
         </DockPanel>
-        
-        <Button Grid.Row="8" Grid.Column="0"
-            HorizontalAlignment="Center" Margin="10"
-                Command="{Binding BscStableToUnstableCommand}">
-            <Button.Content>
-                <TextBlock HorizontalAlignment="Center">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="{}{0} -> {1}">
-                            <Binding Path="BscStableToken"/>
-                            <Binding Path="BscUnstableToken"/>
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-            </Button.Content>
-        </Button>
-        
-        <Button Grid.Row="9" Grid.Column="0"
-            HorizontalAlignment="Center" Margin="10"
-                Command="{Binding BscUnstableToStableCommand}">
-            <Button.Content>
-                <TextBlock HorizontalAlignment="Center">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="{}{0} -> {1}">
-                            <Binding Path="BscUnstableToken"/>
-                            <Binding Path="BscStableToken"/>
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-            </Button.Content>
-        </Button>
+
+        <StackPanel Grid.Row="8" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscStableToUnstableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} -> {1}">
+                                <Binding Path="BscStableToken" />
+                                <Binding Path="BscUnstableToken" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </Button.Content>
+            </Button>
+
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscUnstableToStableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} -> {1}">
+                                <Binding Path="BscUnstableToken" />
+                                <Binding Path="BscStableToken" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </Button.Content>
+            </Button>
+        </StackPanel>
         
         <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
@@ -180,6 +180,23 @@
                 </Button.Content>
             </Button>
         </StackPanel>
+
+        <StackPanel Grid.Row="9" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscBridgeStableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center" Text="{Binding BscStableToken, StringFormat={}Bridge {0}}" />
+                </Button.Content>
+            </Button>
+
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscBridgeUnstableCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center"
+                               Text="{Binding BscUnstableToken, StringFormat={}Bridge {0}}" />
+                </Button.Content>
+            </Button>
+        </StackPanel>
         
         <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
@@ -198,14 +215,40 @@
                 </Button.Content>
             </Button>
         </StackPanel>
-        
-        <Button Grid.Row="10" Grid.Column="0"
-            HorizontalAlignment="Center" Margin="10"
-                Command="{Binding BscBridgeStableCommand}">
-            <Button.Content>
-                <TextBlock HorizontalAlignment="Center" Text="{Binding BscStableToken, StringFormat={}Bridge {0}}" />
-            </Button.Content>
-        </Button>
+
+        <StackPanel Grid.Row="10" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscStableToNativeCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center" Text="{Binding BscStableToken, StringFormat={}10 {0}$ -> BNB}" />
+                </Button.Content>
+            </Button>
+
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding BscUnstableToNativeCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center"
+                               Text="{Binding BscUnstableToken, StringFormat={}10 {0}$ -> BNB}" />
+                </Button.Content>
+            </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheStableToNativeCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center" Text="{Binding AvalancheStableToken, StringFormat={}10 {0}$ -> AVAX}" />
+                </Button.Content>
+            </Button>
+
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding AvalancheUnstableToNativeCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center"
+                               Text="{Binding AvalancheUnstableToken, StringFormat={}10 {0}$ -> AVAX}" />
+                </Button.Content>
+            </Button>
+        </StackPanel>
         
         <ScrollViewer Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" 
                       HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"

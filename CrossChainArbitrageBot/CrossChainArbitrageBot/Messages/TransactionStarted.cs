@@ -2,31 +2,30 @@
 using Agents.Net;
 using CrossChainArbitrageBot.Models;
 
-namespace CrossChainArbitrageBot.Messages
+namespace CrossChainArbitrageBot.Messages;
+
+internal class TransactionStarted : Message
 {
-    internal class TransactionStarted : Message
+    public TransactionStarted(Message predecessorMessage, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessage)
     {
-        public TransactionStarted(Message predecessorMessage, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessage)
-        {
-            TransactionAmount = transactionAmount;
-            Chain = chain;
-            Type = type;
-        }
+        TransactionAmount = transactionAmount;
+        Chain = chain;
+        Type = type;
+    }
 
-        public TransactionStarted(IEnumerable<Message> predecessorMessages, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessages)
-        {
-            TransactionAmount = transactionAmount;
-            Chain = chain;
-            Type = type;
-        }
+    public TransactionStarted(IEnumerable<Message> predecessorMessages, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessages)
+    {
+        TransactionAmount = transactionAmount;
+        Chain = chain;
+        Type = type;
+    }
 
-        public double TransactionAmount { get; }
-        public BlockchainName Chain { get; }
-        public TransactionType Type { get; }
+    public double TransactionAmount { get; }
+    public BlockchainName Chain { get; }
+    public TransactionType Type { get; }
 
-        protected override string DataToString()
-        {
-            return $"{nameof(TransactionAmount)}: {TransactionAmount}; {nameof(Chain)}: {Chain}; {nameof(Type)}: {Type}";
-        }
+    protected override string DataToString()
+    {
+        return $"{nameof(TransactionAmount)}: {TransactionAmount}; {nameof(Chain)}: {Chain}; {nameof(Type)}: {Type}";
     }
 }

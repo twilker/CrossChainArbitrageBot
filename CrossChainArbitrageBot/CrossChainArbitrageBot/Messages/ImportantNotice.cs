@@ -1,25 +1,24 @@
 ﻿using System.Collections.Generic;
 using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages
+namespace CrossChainArbitrageBot.Messages;
+
+internal class ImportantNotice : Message
 {
-    internal class ImportantNotice : Message
+    public ImportantNotice(Message predecessorMessage, string notice) : base(predecessorMessage)
     {
-        public ImportantNotice(Message predecessorMessage, string notice) : base(predecessorMessage)
-        {
-            Notice = notice;
-        }
+        Notice = notice;
+    }
 
-        public ImportantNotice(IEnumerable<Message> predecessorMessages, string notice) : base(predecessorMessages)
-        {
-            Notice = notice;
-        }
+    public ImportantNotice(IEnumerable<Message> predecessorMessages, string notice) : base(predecessorMessages)
+    {
+        Notice = notice;
+    }
 
-        public string Notice { get; }
+    public string Notice { get; }
 
-        protected override string DataToString()
-        {
-            return Notice;
-        }
+    protected override string DataToString()
+    {
+        return Notice;
     }
 }

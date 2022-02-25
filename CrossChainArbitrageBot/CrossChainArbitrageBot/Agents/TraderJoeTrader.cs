@@ -15,69 +15,99 @@ using Nethereum.Web3;
 
 namespace CrossChainArbitrageBot.Agents;
 
-[Consumes(typeof(BlockchainConnected))]
 [Consumes(typeof(TradeInitiating))]
+[Consumes(typeof(TransactionExecuted))]
 public class TraderJoeTrader : Agent
 {
-    private readonly MessageCollector<BlockchainConnected, TradeInitiating> collector;
     public TraderJoeTrader(IMessageBoard messageBoard) : base(messageBoard)
     {
-        collector = new MessageCollector<BlockchainConnected, TradeInitiating>(OnCollected);
-    }
-
-    private void OnCollected(MessageCollection<BlockchainConnected, TradeInitiating> set)
-    {
-        set.MarkAsConsumed(set.Message2);
-        if (set.Message2.Platform != TradingPlatform.TraderJoe)
-        {
-            return;
-        }
-
-        try
-        {
-            BlockchainConnection connection =
-                set.Message1.Connections.First(c => c.BlockchainName == BlockchainName.Avalanche);
-            Contract traderJoeContract = connection.Connection.Eth.GetContract(
-                connection.Abis["TraderJoe"], ConfigurationManager.AppSettings["TraderJoeRouterAddress"]);
-
-            Function? tradeFunction = traderJoeContract.GetFunction("swapExactTokensForTokens");
-
-            HexBigInteger gas = new( 300000);
-            BigInteger amount =
-                Web3.Convert.ToWei(set.Message2.Amount.RoundedAmount(), set.Message2.FromTokenDecimals);
-            
-            object[] parameters = {
-                amount,
-                0,
-                new[] { set.Message2.FromTokenId, set.Message2.ToTokenId },
-                connection.Connection.Eth.TransactionManager.Account.Address,
-                (DateTime.UtcNow.Ticks + 10000)
-            };
-            Task<string>? tradeCall = tradeFunction.SendTransactionAsync(
-                connection.Connection.Eth.TransactionManager.Account.Address,
-                gas, new HexBigInteger(0), parameters);
-            tradeCall.Wait();
-            Task<TransactionReceipt>? receipt =
-                connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(
-                    tradeCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
-            receipt.Wait();
-            OnMessage(new ImportantNotice(set, $"[TRADE] TX ID: {tradeCall.Result} receipt: {receipt.Result}"));
-
-            List<SwapEvent> swapEventList = receipt.Result.DecodeAllEvents<SwapEvent>().Where(t => t.Event != null)
-                                                   .Select(t => t.Event).ToList();
-            SwapEvent? swapEvent = swapEventList.FirstOrDefault();
-            OnMessage(new TradeCompleted(set, swapEvent != null));
-        }
-        catch (Exception e)
-        {
-            OnMessage(new ImportantNotice(set, $"Error trading {e}"));
-
-            OnMessage(new TradeCompleted(set, false));
-        }
     }
 
     protected override void ExecuteCore(Message messageData)
     {
-        collector.Push(messageData);
+        if (messageData.TryGet(out TradeInitiating trade) &&
+            trade.Platform == TradingPlatform.TraderJoe)
+        {
+            if (trade.ToTokenId.Equals(ConfigurationManager.AppSettings["AvalancheNativeCoinId"], StringComparison.OrdinalIgnoreCase))
+            {
+                TradeTokenForNative(messageData, trade);
+            }
+            else
+            {
+                TradeTokenForToken(messageData, trade);
+            }
+        }
+        else if (messageData.TryGet(out TransactionExecuted executed) &&
+                 messageData.MessageDomain.Root.TryGet(out trade) &&
+                 trade.Platform == TradingPlatform.TraderJoe)
+        {
+            MessageDomain.TerminateDomainsOf(messageData);
+            OnMessage(new TradeCompleted(messageData, executed.Success));
+        }
+    }
+
+    private void TradeTokenForToken(Message messageData, TradeInitiating trade)
+    {
+        BigInteger amount = Web3.Convert.ToWei(trade.Amount.RoundedAmount(), trade.FromTokenDecimals);
+
+        string liquidityGoalAddress =
+            trade.FromTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase)
+                ? trade.LiquidityPair.PairedTokenId
+                : trade.LiquidityPair.UnstableTokenId;
+        string[] path = trade.ToTokenId.Equals(liquidityGoalAddress, StringComparison.OrdinalIgnoreCase)
+                            ? new[] { trade.FromTokenId, trade.ToTokenId }
+                            : new[] { trade.FromTokenId, liquidityGoalAddress, trade.ToTokenId };
+
+        object[] parameters =
+        {
+            amount,
+            0,
+            path,
+            trade.WalletAddress,
+            (DateTime.UtcNow.Ticks + 10000)
+        };
+
+        string contractAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"]
+                                 ?? throw new ConfigurationErrorsException(
+                                     "TraderJoeRouterAddress not configured.");
+
+        MessageDomain.CreateNewDomainsFor(messageData);
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Avalanche,
+                                           "TraderJoe",
+                                           contractAddress,
+                                           "swapExactTokensForTokens",
+                                           new HexBigInteger(0),
+                                           parameters));
+    }
+
+    private void TradeTokenForNative(Message messageData, TradeInitiating trade)
+    {
+        BigInteger amount = Web3.Convert.ToWei(trade.Amount.RoundedAmount(), trade.FromTokenDecimals);
+
+        string[] path = trade.FromTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase) &&
+                        trade.ToTokenId.Equals(trade.LiquidityPair.PairedTokenId,StringComparison.OrdinalIgnoreCase)
+                            ? new[] { trade.FromTokenId, trade.ToTokenId }
+                            : new[] { trade.FromTokenId, trade.LiquidityPair.PairedTokenId, trade.ToTokenId };
+
+        object[] parameters =
+        {
+            amount,
+            0,
+            path,
+            trade.WalletAddress,
+            (DateTime.UtcNow.Ticks + 10000)
+        };
+
+        string contractAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"]
+                                 ?? throw new ConfigurationErrorsException(
+                                     "TraderJoeRouterAddress not configured.");
+
+        MessageDomain.CreateNewDomainsFor(messageData);
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Avalanche,
+                                           "TraderJoe",
+                                           contractAddress,
+                                           "swapExactTokensForETH",
+                                           new HexBigInteger(0),
+                                           parameters));
     }
 }

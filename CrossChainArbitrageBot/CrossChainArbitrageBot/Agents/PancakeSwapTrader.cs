@@ -13,67 +13,101 @@ using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 
-namespace CrossChainArbitrageBot.Agents
+namespace CrossChainArbitrageBot.Agents;
+
+[Consumes(typeof(TradeInitiating))]
+[Consumes(typeof(TransactionExecuted))]
+internal class PancakeSwapTrader : Agent
 {
-    [Consumes(typeof(BlockchainConnected))]
-    [Consumes(typeof(TradeInitiating))]
-    internal class PancakeSwapTrader : Agent
+    public PancakeSwapTrader(IMessageBoard messageBoard) : base(messageBoard)
     {
-        private readonly MessageCollector<BlockchainConnected, TradeInitiating> collector;
+    }
 
-        public PancakeSwapTrader(IMessageBoard messageBoard) : base(messageBoard)
+    protected override void ExecuteCore(Message messageData)
+    {
+        if (messageData.TryGet(out TradeInitiating trade) &&
+            trade.Platform == TradingPlatform.PancakeSwap)
         {
-            collector = new MessageCollector<BlockchainConnected, TradeInitiating>(OnCollected);
-        }
-
-        private void OnCollected(MessageCollection<BlockchainConnected, TradeInitiating> set)
-        {
-            set.MarkAsConsumed(set.Message2);
-            if (set.Message2.Platform != TradingPlatform.PancakeSwap)
+            if (trade.ToTokenId.Equals(ConfigurationManager.AppSettings["BscNativeCoinId"], StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                TradeTokenForNative(messageData, trade);
             }
-
-            try
+            else
             {
-                BlockchainConnection connection = set.Message1.Connections.First(c => c.BlockchainName == BlockchainName.Bsc);
-                Contract pancakeContract = connection.Connection.Eth.GetContract(connection.Abis["Pancake"], ConfigurationManager.AppSettings["PancakeswapRouterAddress"]);
-
-                Function? sellFunction = pancakeContract.GetFunction("swapExactTokensForTokens");
-
-                HexBigInteger gas = new(300000);
-                BigInteger amount = Web3.Convert.ToWei(Math.Floor(set.Message2.Amount * Math.Pow(10, 17))/ Math.Pow(10, 17));
-
-                object[] parameters = {
-                    amount,
-                    0,
-                    new[] { set.Message2.FromTokenId, set.Message2.ToTokenId },
-                    connection.Connection.Eth.TransactionManager.Account.Address,
-                    (DateTime.UtcNow.Ticks + 10000)
-                };
-                Task<string>? buyCall = sellFunction.SendTransactionAsync(connection.Connection.Eth.TransactionManager.Account.Address, 
-                                                                          gas, new HexBigInteger(0), parameters);
-                buyCall.Wait();
-                Task<TransactionReceipt>? receipt = connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(buyCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
-                receipt.Wait();
-                OnMessage(new ImportantNotice(set, $"[TRADE] TX ID: {buyCall.Result} receipt: {receipt.Result}"));
-
-                List<SwapEvent> swapEventList = receipt.Result.DecodeAllEvents<SwapEvent>().Where(t => t.Event != null)
-                                                       .Select(t => t.Event).ToList();
-                SwapEvent? swapEvent = swapEventList.FirstOrDefault();
-                OnMessage(new TradeCompleted(set, swapEvent != null));
-            }
-            catch (Exception e)
-            {
-                OnMessage(new ImportantNotice(set, $"Error trading {e}"));
-
-                OnMessage(new TradeCompleted(set, false));
+                TradeTokenForToken(messageData, trade);
             }
         }
-
-        protected override void ExecuteCore(Message messageData)
+        else if (messageData.TryGet(out TransactionExecuted executed) &&
+                 messageData.MessageDomain.Root.TryGet(out trade) &&
+                 trade.Platform == TradingPlatform.PancakeSwap)
         {
-            collector.Push(messageData);
+            MessageDomain.TerminateDomainsOf(messageData);
+            OnMessage(new TradeCompleted(messageData, executed.Success));
         }
+    }
+
+    private void TradeTokenForToken(Message messageData, TradeInitiating trade)
+    {
+        BigInteger amount = Web3.Convert.ToWei(trade.Amount.RoundedAmount(), trade.FromTokenDecimals);
+
+        string liquidityGoalAddress =
+            trade.FromTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase)
+                ? trade.LiquidityPair.PairedTokenId
+                : trade.LiquidityPair.UnstableTokenId;
+        string[] path = trade.ToTokenId.Equals(liquidityGoalAddress, StringComparison.OrdinalIgnoreCase)
+                            ? new[] { trade.FromTokenId, trade.ToTokenId }
+                            : new[] { trade.FromTokenId, liquidityGoalAddress, trade.ToTokenId };
+
+        object[] parameters =
+        {
+            amount,
+            0,
+            path,
+            trade.WalletAddress,
+            (DateTime.UtcNow.Ticks + 10000)
+        };
+
+        string contractAddress = ConfigurationManager.AppSettings["PancakeswapRouterAddress"]
+                                 ?? throw new ConfigurationErrorsException(
+                                     "PancakeswapRouterAddress not configured.");
+
+        MessageDomain.CreateNewDomainsFor(messageData);
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Bsc,
+                                           "Pancake",
+                                           contractAddress,
+                                           "swapExactTokensForTokens",
+                                           new HexBigInteger(0),
+                                           parameters));
+    }
+
+    private void TradeTokenForNative(Message messageData, TradeInitiating trade)
+    {
+        BigInteger amount = Web3.Convert.ToWei(trade.Amount.RoundedAmount(), trade.FromTokenDecimals);
+
+        string[] path = trade.FromTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase) &&
+                        trade.ToTokenId.Equals(trade.LiquidityPair.PairedTokenId,StringComparison.OrdinalIgnoreCase)
+                            ? new[] { trade.FromTokenId, trade.ToTokenId }
+                            : new[] { trade.FromTokenId, trade.LiquidityPair.PairedTokenId, trade.ToTokenId };
+
+        object[] parameters =
+        {
+            amount,
+            0,
+            path,
+            trade.WalletAddress,
+            (DateTime.UtcNow.Ticks + 10000)
+        };
+
+        string contractAddress = ConfigurationManager.AppSettings["PancakeswapRouterAddress"]
+                                 ?? throw new ConfigurationErrorsException(
+                                     "PancakeswapRouterAddress not configured.");
+
+        MessageDomain.CreateNewDomainsFor(messageData);
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Bsc,
+                                           "Pancake",
+                                           contractAddress,
+                                           "swapExactTokensForETH",
+                                           new HexBigInteger(0),
+                                           parameters));
     }
 }

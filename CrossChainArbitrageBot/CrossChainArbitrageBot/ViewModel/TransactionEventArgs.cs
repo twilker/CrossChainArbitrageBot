@@ -1,19 +1,18 @@
 ﻿using System;
 using CrossChainArbitrageBot.Models;
 
-namespace CrossChainArbitrageBot.ViewModel
-{
-    public class TransactionEventArgs : EventArgs
-    {
-        public int TransactionAmount { get; }
-        public BlockchainName Chain { get; }
-        public TransactionType Type { get; }
+namespace CrossChainArbitrageBot.ViewModel;
 
-        public TransactionEventArgs(int transactionAmount, BlockchainName chain, TransactionType type)
-        {
-            TransactionAmount = transactionAmount;
-            Chain = chain;
-            Type = type;
-        }
+public class TransactionEventArgs : EventArgs
+{
+    public int TransactionAmount { get; }
+    public BlockchainName Chain { get; }
+    public TransactionType Type { get; }
+
+    public TransactionEventArgs(int transactionAmount, BlockchainName chain, TransactionType type)
+    {
+        TransactionAmount = transactionAmount;
+        Chain = chain;
+        Type = type;
     }
 }
