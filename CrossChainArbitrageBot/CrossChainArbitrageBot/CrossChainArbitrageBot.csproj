@@ -10,10 +10,6 @@
   <ItemGroup>
     <PackageReference Include="Agents.Net" Version="2021.6.2" />
     <PackageReference Include="Autofac" Version="6.3.0" />
-    <PackageReference Include="Fractions" Version="7.0.0" />
-    <PackageReference Include="Moralis.Web3Api" Version="1.0.8" />
-    <PackageReference Include="Nethereum.Web3" Version="4.1.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Serilog" Version="2.10.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="1.1.0" />
     <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
@@ -50,6 +46,10 @@
     <Resource Include="Images\avax-logo.png" />
     <None Remove="Images\bnb-logo.png" />
     <Resource Include="Images\bnb-logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CrossChainArbitrageBot.Base\CrossChainArbitrageBot.Base.csproj" />
   </ItemGroup>
 
 </Project>

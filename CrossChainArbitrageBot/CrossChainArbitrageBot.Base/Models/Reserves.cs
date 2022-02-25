@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
-namespace CrossChainArbitrageBot.Models;
+namespace CrossChainArbitrageBot.Base.Models;
 
 [FunctionOutput]
 public class Reserves : IFunctionOutputDTO

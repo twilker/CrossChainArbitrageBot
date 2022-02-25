@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
+﻿using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class ImportantNotice : Message
+public class ImportantNotice : Message
 {
     public ImportantNotice(Message predecessorMessage, string notice) : base(predecessorMessage)
     {

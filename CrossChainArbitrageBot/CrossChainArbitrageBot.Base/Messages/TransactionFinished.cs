@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
+﻿using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TransactionFinished : Message
+public class TransactionFinished : Message
 {
     public TransactionFinished(Message predecessorMessage, TransactionResult result) : base(predecessorMessage)
     {

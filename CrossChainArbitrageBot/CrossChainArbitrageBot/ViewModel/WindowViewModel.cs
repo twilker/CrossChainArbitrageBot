@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using CrossChainArbitrageBot.Annotations;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Models;
 
 namespace CrossChainArbitrageBot.ViewModel;
 

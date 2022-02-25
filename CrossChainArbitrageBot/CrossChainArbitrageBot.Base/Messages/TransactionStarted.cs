@@ -1,10 +1,9 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
-using CrossChainArbitrageBot.Models;
+﻿using Agents.Net;
+using CrossChainArbitrageBot.Base.Models;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TransactionStarted : Message
+public class TransactionStarted : Message
 {
     public TransactionStarted(Message predecessorMessage, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessage)
     {

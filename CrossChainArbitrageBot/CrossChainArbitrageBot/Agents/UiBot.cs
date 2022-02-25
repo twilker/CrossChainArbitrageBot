@@ -1,7 +1,7 @@
 ﻿using System;
 using Agents.Net;
-using CrossChainArbitrageBot.Messages;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Messages;
+using CrossChainArbitrageBot.Base.Models;
 using CrossChainArbitrageBot.ViewModel;
 
 namespace CrossChainArbitrageBot.Agents;
@@ -37,7 +37,7 @@ internal class UiBot : Agent
             return;
         }
         mainWindowCreated = messageData.Get<MainWindowCreated>();
-        mainWindow = mainWindowCreated.MainWindow;
+        mainWindow = (MainWindow)mainWindowCreated.MainWindow;
         SubscribeToEvents();
     }
 

@@ -2,7 +2,7 @@
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Contracts;
 
-namespace CrossChainArbitrageBot.Models;
+namespace CrossChainArbitrageBot.Base.Models;
 
 [Event("Swap")]
 public class SwapEvent : FunctionMessage

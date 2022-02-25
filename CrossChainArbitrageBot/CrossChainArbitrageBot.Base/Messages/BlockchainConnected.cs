@@ -1,12 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Agents.Net;
-using CrossChainArbitrageBot.Models;
+﻿using Agents.Net;
+using CrossChainArbitrageBot.Base.Models;
 using Nethereum.Web3;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class BlockchainConnected : Message
+public class BlockchainConnected : Message
 {
     public BlockchainConnected(params BlockchainConnection[] connections) : base(Enumerable.Empty<Message>())
     {

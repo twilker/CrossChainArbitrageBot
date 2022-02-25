@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
+﻿using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TradeCompleted : Message
+public class TradeCompleted : Message
 {
     public TradeCompleted(Message predecessorMessage, bool success) : base(predecessorMessage)
     {

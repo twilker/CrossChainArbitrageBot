@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Numerics;
+﻿using System.Numerics;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Contracts;
 
-namespace CrossChainArbitrageBot.Models;
+namespace CrossChainArbitrageBot.Base.Models;
 
 public class SwapTokensForExactETHFunction : SwapTokensForExactETHFunctionBase { }
 

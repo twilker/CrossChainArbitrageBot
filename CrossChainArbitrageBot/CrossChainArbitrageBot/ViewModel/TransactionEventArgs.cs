@@ -1,5 +1,5 @@
 ﻿using System;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Models;
 
 namespace CrossChainArbitrageBot.ViewModel;
 

@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using Agents.Net;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Models;
 using Nethereum.Hex.HexTypes;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
 public class TransactionExecuting : Message
 {

@@ -1,34 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 using Agents.Net;
-using CrossChainArbitrageBot.Messages;
-using CrossChainArbitrageBot.Models;
-using Nethereum.Contracts;
+using CrossChainArbitrageBot.Base.Messages;
+using CrossChainArbitrageBot.Base.Models;
 using Nethereum.Hex.HexTypes;
-using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 
-namespace CrossChainArbitrageBot.Agents;
+namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(TradeInitiating))]
 [Consumes(typeof(TransactionExecuted))]
-internal class PancakeSwapTrader : Agent
+public class TraderJoeTrader : Agent
 {
-    public PancakeSwapTrader(IMessageBoard messageBoard) : base(messageBoard)
+    public TraderJoeTrader(IMessageBoard messageBoard) : base(messageBoard)
     {
     }
 
     protected override void ExecuteCore(Message messageData)
     {
         if (messageData.TryGet(out TradeInitiating trade) &&
-            trade.Platform == TradingPlatform.PancakeSwap)
+            trade.Platform == TradingPlatform.TraderJoe)
         {
-            if (trade.ToTokenId.Equals(ConfigurationManager.AppSettings["BscNativeCoinId"], StringComparison.OrdinalIgnoreCase))
+            if (trade.ToTokenId.Equals(ConfigurationManager.AppSettings["AvalancheNativeCoinId"], StringComparison.OrdinalIgnoreCase))
             {
                 TradeTokenForNative(messageData, trade);
             }
@@ -39,7 +32,7 @@ internal class PancakeSwapTrader : Agent
         }
         else if (messageData.TryGet(out TransactionExecuted executed) &&
                  messageData.MessageDomain.Root.TryGet(out trade) &&
-                 trade.Platform == TradingPlatform.PancakeSwap)
+                 trade.Platform == TradingPlatform.TraderJoe)
         {
             MessageDomain.TerminateDomainsOf(messageData);
             OnMessage(new TradeCompleted(messageData, executed.Success));
@@ -67,13 +60,13 @@ internal class PancakeSwapTrader : Agent
             (DateTime.UtcNow.Ticks + 10000)
         };
 
-        string contractAddress = ConfigurationManager.AppSettings["PancakeswapRouterAddress"]
+        string contractAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"]
                                  ?? throw new ConfigurationErrorsException(
-                                     "PancakeswapRouterAddress not configured.");
+                                     "TraderJoeRouterAddress not configured.");
 
         MessageDomain.CreateNewDomainsFor(messageData);
-        OnMessage(new TransactionExecuting(messageData, BlockchainName.Bsc,
-                                           "Pancake",
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Avalanche,
+                                           "TraderJoe",
                                            contractAddress,
                                            "swapExactTokensForTokens",
                                            new HexBigInteger(0),
@@ -98,13 +91,13 @@ internal class PancakeSwapTrader : Agent
             (DateTime.UtcNow.Ticks + 10000)
         };
 
-        string contractAddress = ConfigurationManager.AppSettings["PancakeswapRouterAddress"]
+        string contractAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"]
                                  ?? throw new ConfigurationErrorsException(
-                                     "PancakeswapRouterAddress not configured.");
+                                     "TraderJoeRouterAddress not configured.");
 
         MessageDomain.CreateNewDomainsFor(messageData);
-        OnMessage(new TransactionExecuting(messageData, BlockchainName.Bsc,
-                                           "Pancake",
+        OnMessage(new TransactionExecuting(messageData, BlockchainName.Avalanche,
+                                           "TraderJoe",
                                            contractAddress,
                                            "swapExactTokensForETH",
                                            new HexBigInteger(0),

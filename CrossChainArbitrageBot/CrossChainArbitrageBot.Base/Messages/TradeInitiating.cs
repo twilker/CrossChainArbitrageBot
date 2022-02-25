@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
+﻿using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TradeInitiating : Message
+public class TradeInitiating : Message
 {
     public string FromTokenId { get; }
     public string ToTokenId { get; }

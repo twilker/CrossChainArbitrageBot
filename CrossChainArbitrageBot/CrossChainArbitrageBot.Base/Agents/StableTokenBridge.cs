@@ -1,18 +1,14 @@
-﻿using System;
-using System.Configuration;
-using System.Linq;
+﻿using System.Configuration;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 using Agents.Net;
-using CrossChainArbitrageBot.Messages;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Messages;
+using CrossChainArbitrageBot.Base.Models;
 using Nethereum.Contracts;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 
-namespace CrossChainArbitrageBot.Agents;
+namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(TokenBridging))]
 [Consumes(typeof(BlockchainConnected))]

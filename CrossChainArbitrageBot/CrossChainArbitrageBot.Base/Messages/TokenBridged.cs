@@ -1,10 +1,9 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
-using CrossChainArbitrageBot.Models;
+﻿using Agents.Net;
+using CrossChainArbitrageBot.Base.Models;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TokenBridged : Message
+public class TokenBridged : Message
 {
     public TokenBridged(Message predecessorMessage, bool success, double amountSend, double originalTargetAmount, BlockchainName targetChain, TokenType tokenType) : base(predecessorMessage)
     {

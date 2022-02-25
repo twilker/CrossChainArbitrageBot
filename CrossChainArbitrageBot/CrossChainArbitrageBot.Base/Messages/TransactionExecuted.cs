@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using Agents.Net;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
 public class TransactionExecuted : Message
 {

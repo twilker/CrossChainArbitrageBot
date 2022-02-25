@@ -1,8 +1,7 @@
-using System.Collections.Generic;
 using Agents.Net;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Models;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
 public class DataUpdated : Message
 {

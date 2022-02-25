@@ -1,12 +1,9 @@
-﻿using System;
-using System.Configuration;
-using System.Linq;
-using System.Threading;
+﻿using System.Configuration;
 using Agents.Net;
-using CrossChainArbitrageBot.Messages;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Messages;
+using CrossChainArbitrageBot.Base.Models;
 
-namespace CrossChainArbitrageBot.Agents;
+namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(TransactionStarted))]
 [Consumes(typeof(DataUpdated))]

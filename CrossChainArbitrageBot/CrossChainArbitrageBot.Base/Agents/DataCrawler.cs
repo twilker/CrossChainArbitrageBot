@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Configuration;
-using System.Linq;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 using Agents.Net;
-using CrossChainArbitrageBot.Messages;
-using CrossChainArbitrageBot.Models;
+using CrossChainArbitrageBot.Base.Messages;
+using CrossChainArbitrageBot.Base.Models;
 using Moralis.Web3Api;
 using Moralis.Web3Api.Models;
 using Nethereum.Contracts.Services;
@@ -16,7 +11,7 @@ using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
 using Log = Serilog.Log;
 
-namespace CrossChainArbitrageBot.Agents;
+namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(BlockchainConnected))]
 [Produces(typeof(DataUpdated))]

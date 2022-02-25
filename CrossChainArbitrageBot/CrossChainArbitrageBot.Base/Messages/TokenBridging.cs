@@ -1,11 +1,9 @@
-﻿using System.Collections.Generic;
-using Agents.Net;
-using CrossChainArbitrageBot.Models;
-using Nethereum.Util;
+﻿using Agents.Net;
+using CrossChainArbitrageBot.Base.Models;
 
-namespace CrossChainArbitrageBot.Messages;
+namespace CrossChainArbitrageBot.Base.Messages;
 
-internal class TokenBridging : Message
+public class TokenBridging : Message
 {
     public TokenBridging(Message predecessorMessage, BlockchainName sourceChain, double amount, double originalTargetAmount, TokenType tokenType, string targetWallet, int decimals) : base(predecessorMessage)
     {

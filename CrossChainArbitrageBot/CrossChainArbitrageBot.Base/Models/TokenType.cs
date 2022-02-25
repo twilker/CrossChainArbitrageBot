@@ -1,4 +1,4 @@
-namespace CrossChainArbitrageBot.Models;
+namespace CrossChainArbitrageBot.Base.Models;
 
 public enum TokenType
 {
