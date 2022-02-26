@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossChainArbitrageBot.Base
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossChainArbitrageBot.Simulation", "CrossChainArbitrageBot.Simulation\CrossChainArbitrageBot.Simulation.csproj", "{AA957620-CEEF-4222-A66E-F5AEA37C57B0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossChainArbitrageBot.SimulationBase", "CrossChainArbitrageBot.SimulationBase\CrossChainArbitrageBot.SimulationBase.csproj", "{55FE1CD0-F6B2-402D-8F74-44912AD3E052}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{AA957620-CEEF-4222-A66E-F5AEA37C57B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA957620-CEEF-4222-A66E-F5AEA37C57B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA957620-CEEF-4222-A66E-F5AEA37C57B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55FE1CD0-F6B2-402D-8F74-44912AD3E052}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55FE1CD0-F6B2-402D-8F74-44912AD3E052}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55FE1CD0-F6B2-402D-8F74-44912AD3E052}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55FE1CD0-F6B2-402D-8F74-44912AD3E052}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

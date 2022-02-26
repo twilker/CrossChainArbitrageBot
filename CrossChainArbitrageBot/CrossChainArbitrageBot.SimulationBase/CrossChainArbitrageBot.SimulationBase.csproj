@@ -14,7 +14,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\CrossChainArbitrageBot.Base\CrossChainArbitrageBot.Base.csproj" />
-      <ProjectReference Include="..\CrossChainArbitrageBot.SimulationBase\CrossChainArbitrageBot.SimulationBase.csproj" />
     </ItemGroup>
 
 </Project>

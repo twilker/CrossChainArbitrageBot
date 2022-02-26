@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using Agents.Net;
-using CrossChainArbitrageBot.Simulation.Model;
+using CrossChainArbitrageBot.SimulationBase.Model;
 
-namespace CrossChainArbitrageBot.Simulation.Messages;
+namespace CrossChainArbitrageBot.SimulationBase.Messages;
 
 public class WalletBalanceUpdated : Message
 {

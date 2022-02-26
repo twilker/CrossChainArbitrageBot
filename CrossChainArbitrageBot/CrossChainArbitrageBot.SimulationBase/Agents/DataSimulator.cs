@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Windows.Documents;
 using Agents.Net;
 using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
-using CrossChainArbitrageBot.Simulation.Messages;
+using CrossChainArbitrageBot.SimulationBase.Messages;
 
-namespace CrossChainArbitrageBot.Simulation.Agents;
+namespace CrossChainArbitrageBot.SimulationBase.Agents;
 
 [Intercepts(typeof(DataUpdated))]
-
 public class DataSimulator : InterceptorAgent
 {
     private readonly ConcurrentDictionary<BlockchainName, Wallet> wallets = new();

@@ -1,8 +1,7 @@
-using System.Collections.Generic;
 using Agents.Net;
 using CrossChainArbitrageBot.Base.Messages;
 
-namespace CrossChainArbitrageBot.Simulation.Messages;
+namespace CrossChainArbitrageBot.SimulationBase.Messages;
 
 public class SimulatedDataUpdated : MessageDecorator
 {
