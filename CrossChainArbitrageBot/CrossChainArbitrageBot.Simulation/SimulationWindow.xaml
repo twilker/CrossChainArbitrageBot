@@ -4,9 +4,37 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:CrossChainArbitrageBot.Simulation"
+        xmlns:viewModel="clr-namespace:CrossChainArbitrageBot.Simulation.ViewModel"
+        d:DataContext="{d:DesignInstance viewModel:SimulationWindowViewModel}"
         mc:Ignorable="d"
         Title="SimulationWindow" Height="650" Width="350">
     <Grid>
-        <TextBlock>Simulation!</TextBlock>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2"
+                   Text="{Binding Chain1Name}"
+                   HorizontalAlignment="Center"
+                   FontSize="20"
+                   Margin="0,10,0,10"/>
+        
+        <TextBlock Grid.Column="0" Grid.Row="1"
+                   Text="{Binding Chain1UnstableSymbol, StringFormat={}{0}:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,5"/>
+        <TextBox Grid.Column="1" Grid.Row="1" 
+                 Text="{Binding Chain1UnstableAmount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain1UnstableAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain1UnstableAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
     </Grid>
 </Window>

@@ -6,17 +6,17 @@ namespace CrossChainArbitrageBot.SimulationBase.Messages;
 
 public class WalletBalanceUpdated : Message
 {
-    public WalletBalanceUpdated(Message predecessorMessage, IEnumerable<WalletBalanceUpdate> updates) : base(predecessorMessage)
+    public WalletBalanceUpdated(Message predecessorMessage, params WalletBalanceUpdate[] updates) : base(predecessorMessage)
     {
         Updates = updates;
     }
 
-    public WalletBalanceUpdated(IEnumerable<Message> predecessorMessages, IEnumerable<WalletBalanceUpdate> updates) : base(predecessorMessages)
+    public WalletBalanceUpdated(IEnumerable<Message> predecessorMessages, params WalletBalanceUpdate[] updates) : base(predecessorMessages)
     {
         Updates = updates;
     }
     
-    public IEnumerable<WalletBalanceUpdate> Updates { get; }
+    public WalletBalanceUpdate[] Updates { get; }
 
     protected override string DataToString()
     {
