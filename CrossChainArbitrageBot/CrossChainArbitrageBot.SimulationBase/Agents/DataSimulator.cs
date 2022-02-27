@@ -11,16 +11,42 @@ namespace CrossChainArbitrageBot.SimulationBase.Agents;
 
 [Intercepts(typeof(DataUpdated))]
 [Consumes(typeof(WalletBalanceUpdated))]
+[Consumes(typeof(PriceUpdated))]
 public class DataSimulator : InterceptorAgent
 {
     private readonly ConcurrentDictionary<BlockchainName, Wallet> wallets = new();
+    private readonly ConcurrentDictionary<BlockchainName, double> prices = new();
     public DataSimulator(IMessageBoard messageBoard) : base(messageBoard)
     {
     }
 
     protected override void ExecuteCore(Message messageData)
     {
+        if (messageData.TryGet(out PriceUpdated priceUpdated))
+        {
+            ProcessPriceUpdate(priceUpdated);
+            return;
+        }
         WalletBalanceUpdated updated = messageData.Get<WalletBalanceUpdated>();
+        ProcessWalletUpdate(updated);
+    }
+
+    private void ProcessPriceUpdate(PriceUpdated priceUpdated)
+    {
+        if (!priceUpdated.PriceOverride.HasValue)
+        {
+            prices.TryRemove(priceUpdated.BlockchainName, out _);
+        }
+        else
+        {
+            prices.AddOrUpdate(priceUpdated.BlockchainName,
+                               _ => priceUpdated.PriceOverride.Value,
+                               (_, _) => priceUpdated.PriceOverride.Value);
+        }
+    }
+
+    private void ProcessWalletUpdate(WalletBalanceUpdated updated)
+    {
         foreach (WalletBalanceUpdate update in updated.Updates)
         {
             if (wallets.TryGetValue(update.Chain, out Wallet changing))
@@ -49,7 +75,7 @@ public class DataSimulator : InterceptorAgent
                                           changing);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException(nameof(update.Type),update.Type,"Not implemented.");
+                        throw new ArgumentOutOfRangeException(nameof(update.Type), update.Type, "Not implemented.");
                 }
             }
         }
@@ -77,13 +103,30 @@ public class DataSimulator : InterceptorAgent
                 throw new InvalidOperationException("Simulated wallet was not configured.");
             }
 
+            Liquidity liquidity;
+            double unstablePrice;
+            if (prices.ContainsKey(dataUpdate.BlockchainName) &&
+                prices.TryGetValue(dataUpdate.BlockchainName, out double price))
+            {
+                unstablePrice = price;
+                double constant = dataUpdate.Liquidity.TokenAmount * dataUpdate.Liquidity.UsdPaired;
+                liquidity = new Liquidity(Math.Sqrt(constant / unstablePrice),
+                                          Math.Sqrt(constant * unstablePrice),
+                                          dataUpdate.Liquidity.PairedTokenId,
+                                          dataUpdate.Liquidity.UnstableTokenId);
+            }
+            else
+            {
+                unstablePrice = dataUpdate.UnstablePrice;
+                liquidity = dataUpdate.Liquidity;
+            }
             updates.Add(new DataUpdate(dataUpdate.BlockchainName,
-                                       dataUpdate.UnstablePrice,
+                                       unstablePrice,
                                        currentState.UnstableAmount,
                                        dataUpdate.UnstableSymbol,
                                        dataUpdate.UnstableId,
                                        dataUpdate.UnstableDecimals,
-                                       dataUpdate.Liquidity,
+                                       liquidity,
                                        currentState.StableAmount,
                                        dataUpdate.StableSymbol,
                                        dataUpdate.StableId,

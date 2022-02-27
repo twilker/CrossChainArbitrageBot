@@ -16,6 +16,14 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
         <TextBlock Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2"
@@ -25,16 +33,133 @@
                    Margin="0,10,0,10"/>
         
         <TextBlock Grid.Column="0" Grid.Row="1"
-                   Text="{Binding Chain1UnstableSymbol, StringFormat={}{0}:}"
+                   Text="{Binding Chain1UnstableSymbol, StringFormat={}{0}$:}"
                    HorizontalAlignment="Left"
-                   Margin="10,0,10,5"/>
+                   Margin="10,0,10,0"/>
         <TextBox Grid.Column="1" Grid.Row="1" 
-                 Text="{Binding Chain1UnstableAmount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 HorizontalAlignment="Stretch">
+                 Text="{Binding Chain1UnstableValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
             <TextBox.InputBindings>
                 <KeyBinding Key="Enter" Command="{Binding Chain1UnstableAmountOverride}"/>
                 <KeyBinding Key="Return" Command="{Binding Chain1UnstableAmountOverride}"/>
             </TextBox.InputBindings>
         </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="2"
+                   Text="{Binding Chain1StableSymbol, StringFormat={}{0}$:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="2" 
+                 Text="{Binding Chain1StableAmount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain1StableAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain1StableAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="3"
+                   Text="{Binding Chain1NativeSymbol, StringFormat={}{0}$:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="3" 
+                 Text="{Binding Chain1NativeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain1NativeAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain1NativeAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="4"
+                   Text="{Binding Chain1UnstableSymbol, StringFormat={}{0} Price:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <StackPanel Grid.Column="1" Grid.Row="4"
+                    Orientation="Vertical"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,0,10,5">
+            <TextBox Text="{Binding Chain1UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     HorizontalAlignment="Stretch"
+                     Margin="0,0,0,5">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding Chain1UnstablePriceOverride}"/>
+                    <KeyBinding Key="Return" Command="{Binding Chain1UnstablePriceOverride}"/>
+                </TextBox.InputBindings>
+            </TextBox>
+            <TextBlock Text="{Binding Chain1UnstablePrice, StringFormat={}{0:F2}$}"
+                       HorizontalAlignment="Left"/>
+        </StackPanel>
+        
+        <TextBlock Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2"
+                   Text="{Binding Chain2Name}"
+                   HorizontalAlignment="Center"
+                   FontSize="20"
+                   Margin="0,10,0,10"/>
+        
+        <TextBlock Grid.Column="0" Grid.Row="6"
+                   Text="{Binding Chain2UnstableSymbol, StringFormat={}{0}$:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="6" 
+                 Text="{Binding Chain2UnstableValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain2UnstableAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain2UnstableAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="7"
+                   Text="{Binding Chain2StableSymbol, StringFormat={}{0}$:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="7" 
+                 Text="{Binding Chain2StableAmount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain2StableAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain2StableAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="8"
+                   Text="{Binding Chain2NativeSymbol, StringFormat={}{0}$:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="8" 
+                 Text="{Binding Chain2NativeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding Chain2NativeAmountOverride}"/>
+                <KeyBinding Key="Return" Command="{Binding Chain2NativeAmountOverride}"/>
+            </TextBox.InputBindings>
+        </TextBox>
+        
+        <TextBlock Grid.Column="0" Grid.Row="9"
+                   Text="{Binding Chain2UnstableSymbol, StringFormat={}{0} Price:}"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <StackPanel Grid.Column="1" Grid.Row="9"
+                    Orientation="Vertical"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,0,10,5">
+            <TextBox Text="{Binding Chain2UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     HorizontalAlignment="Stretch"
+                     Margin="0,0,0,5">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding Chain2UnstablePriceOverride}"/>
+                    <KeyBinding Key="Return" Command="{Binding Chain2UnstablePriceOverride}"/>
+                </TextBox.InputBindings>
+            </TextBox>
+            <TextBlock Text="{Binding Chain2UnstablePrice, StringFormat={}{0:F2}$}"
+                       HorizontalAlignment="Left"/>
+        </StackPanel>
     </Grid>
 </Window>

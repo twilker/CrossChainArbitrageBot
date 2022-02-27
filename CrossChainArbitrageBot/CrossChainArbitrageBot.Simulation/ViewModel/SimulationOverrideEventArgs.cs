@@ -5,14 +5,12 @@ namespace CrossChainArbitrageBot.Simulation.ViewModel;
 
 public class SimulationOverrideEventArgs
 {
-    public SimulationOverrideEventArgs(SimulationOverrideValueType type, BlockchainName blockchainName, double amount)
+    public SimulationOverrideEventArgs(SimulationOverrideValueType type, BlockchainName blockchainName)
     {
         Type = type;
         BlockchainName = blockchainName;
-        Amount = amount;
     }
 
     public SimulationOverrideValueType Type { get; }
     public BlockchainName BlockchainName { get; }
-    public double Amount { get; }
 }
