@@ -9,5 +9,6 @@ public class SimulationBaseModule : Module
     protected override void Load(ContainerBuilder builder)
     {
         builder.RegisterType<DataSimulator>().As<Agent>().InstancePerLifetimeScope();
+        builder.RegisterType<SimulationBlockchainExecuter>().As<Agent>().InstancePerLifetimeScope();
     }
 }

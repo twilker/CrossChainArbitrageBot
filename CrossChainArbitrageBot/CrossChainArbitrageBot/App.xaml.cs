@@ -75,7 +75,6 @@ public partial class App : Application
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
             {"Pair", File.ReadAllText("./Abis/Pair.json") },
             {"Pancake", File.ReadAllText("./Abis/Pancake.json") },
-            {"AnySwap", File.ReadAllText("./Abis/AnySwap.json") },
             {"Celer", File.ReadAllText("./Abis/Celer.json") },
         };
         Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
@@ -86,7 +85,6 @@ public partial class App : Application
         {
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
             {"Pair", File.ReadAllText("./Abis/Pair.json") },
-            {"AnySwap", File.ReadAllText("./Abis/AnySwap.json") },
             {"TraderJoe", File.ReadAllText("./Abis/TraderJoe.json") },
             {"Celer", File.ReadAllText("./Abis/Celer.json") },
         };

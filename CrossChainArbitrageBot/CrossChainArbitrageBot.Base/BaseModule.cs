@@ -12,7 +12,6 @@ public class BaseModule : Module
         builder.RegisterType<PancakeSwapTrader>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<ArbitrageBot>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<TraderJoeTrader>().As<Agent>().InstancePerLifetimeScope();
-        builder.RegisterType<StableTokenBridge>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<CelerTokenBridge>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<MessageBoard>().As<IMessageBoard>().InstancePerLifetimeScope();
     }

@@ -24,8 +24,7 @@ public class CelerTokenBridge : Agent
 
     protected override void ExecuteCore(Message messageData)
     {
-        if(messageData.TryGet(out TokenBridging bridging) &&
-           bridging.TokenType == TokenType.Unstable)
+        if(messageData.TryGet(out TokenBridging bridging))
         {
             string contractAddress = bridging.SourceChain switch
             {
@@ -33,12 +32,7 @@ public class CelerTokenBridge : Agent
                 BlockchainName.Avalanche => ConfigurationManager.AppSettings["AvalancheCelerBridgeAddress"] ?? throw new ConfigurationErrorsException("AvalancheCelerBridgeAddress not defined."),
                 _ => throw new InvalidOperationException("Not implemented.")
             };
-            string token = bridging.SourceChain switch
-            {
-                BlockchainName.Bsc => ConfigurationManager.AppSettings["BscUnstableCoinId"] ?? throw new ConfigurationErrorsException("BscUnstableCoinId not defined."),
-                BlockchainName.Avalanche => ConfigurationManager.AppSettings["AvalancheUnstableCoinId"] ?? throw new ConfigurationErrorsException("AvalancheUnstableCoinId not defined."),
-                _ => throw new InvalidOperationException("Not implemented.")
-            };
+            string token = bridging.BridgedSourceToken;
             string sourceChainId = bridging.SourceChain switch
             {
                 BlockchainName.Bsc => ConfigurationManager.AppSettings["BscId"] ?? throw new ConfigurationErrorsException("BscId not defined."),
@@ -74,8 +68,7 @@ public class CelerTokenBridge : Agent
                                                new HexBigInteger(0), parameters));
         }
         else if (messageData.TryGet(out TransactionExecuted executed) &&
-                 messageData.MessageDomain.Root.TryGet(out bridging) &&
-                 bridging.TokenType == TokenType.Unstable)
+                 messageData.MessageDomain.Root.TryGet(out bridging))
         {
             MessageDomain.TerminateDomainsOf(messageData);
             OnMessage(new TokenBridged(messageData, executed.Success, 
@@ -85,7 +78,7 @@ public class CelerTokenBridge : Agent
                                            BlockchainName.Bsc => BlockchainName.Avalanche,
                                            BlockchainName.Avalanche => BlockchainName.Bsc,
                                            _ => throw new InvalidOperationException("Not implemented.")
-                                       }, TokenType.Unstable));
+                                       }, bridging.BridgedSourceToken));
         }
     }
 

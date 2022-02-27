@@ -56,16 +56,18 @@ internal class ArbitrageBot : Agent
                         OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to Avalanche"));
                         OnMessage(new TokenBridging(set, BlockchainName.Bsc,
                                                     lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                                    targetUpdate.StableAmount, TokenType.Stable, 
-                                                    lastUpdate.WalletAddress, lastUpdate.StableDecimals));
+                                                    targetUpdate.StableAmount, 
+                                                    lastUpdate.WalletAddress, lastUpdate.StableDecimals,
+                                                    GetBridgeSourceToken(TokenType.Stable, BlockchainName.Bsc)));
                         break;
                     case TransactionType.BridgeUnstable:
                         targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
                         OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to Avalanche"));
                         OnMessage(new TokenBridging(set, BlockchainName.Bsc,
                                                     lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                                    targetUpdate.UnstableAmount, TokenType.Unstable, 
-                                                    lastUpdate.WalletAddress, lastUpdate.UnstableDecimals));
+                                                    targetUpdate.UnstableAmount, 
+                                                    lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
+                                                    GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Bsc)));
                         break;
                     case TransactionType.StableToNative:
                         OnMessage(new ImportantNotice(set, $"Trading 10 {lastUpdate.StableSymbol} for BNB on BSC"));
@@ -117,16 +119,18 @@ internal class ArbitrageBot : Agent
                         OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to BSC"));
                         OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
                                                     lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                                    targetUpdate.StableAmount, TokenType.Stable, 
-                                                    lastUpdate.WalletAddress, lastUpdate.StableDecimals));
+                                                    targetUpdate.StableAmount, 
+                                                    lastUpdate.WalletAddress, lastUpdate.StableDecimals,
+                                                    GetBridgeSourceToken(TokenType.Stable, BlockchainName.Avalanche)));
                         break;
                     case TransactionType.BridgeUnstable:
                         targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
                         OnMessage(new ImportantNotice(set, $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to BSC"));
                         OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
                                                     lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                                    targetUpdate.UnstableAmount, TokenType.Unstable, 
-                                                    lastUpdate.WalletAddress, lastUpdate.UnstableDecimals));
+                                                    targetUpdate.UnstableAmount, 
+                                                    lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
+                                                    GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Avalanche)));
                         break;
                     case TransactionType.StableToNative:
                         OnMessage(new ImportantNotice(set, $"Trading 10 {lastUpdate.StableSymbol} for AVAX on Avalanche"));
@@ -156,6 +160,31 @@ internal class ArbitrageBot : Agent
             default:
                 throw new InvalidOperationException("Not Implemented.");
         }
+    }
+
+    private static string GetBridgeSourceToken(TokenType tokenType, BlockchainName sourceChain)
+    {
+        return tokenType switch
+        {
+            TokenType.Stable => sourceChain switch
+            {
+                BlockchainName.Bsc => ConfigurationManager.AppSettings["BscStableCoinId"] ??
+                                      throw new ConfigurationErrorsException("BscStableCoinId not found"),
+                BlockchainName.Avalanche => ConfigurationManager.AppSettings["AvalancheStableCoinId"] ??
+                                            throw new ConfigurationErrorsException("AvalancheStableCoinId not found"),
+                _ => throw new ArgumentOutOfRangeException(nameof(sourceChain), sourceChain, null)
+            },
+            TokenType.Unstable => sourceChain switch
+            {
+                BlockchainName.Bsc => ConfigurationManager.AppSettings["BscUnstableCoinId"] ??
+                                      throw new ConfigurationErrorsException("BscUnstableCoinId not found"),
+                BlockchainName.Avalanche => ConfigurationManager.AppSettings["AvalancheUnstableCoinId"] ??
+                                            throw new ConfigurationErrorsException("AvalancheUnstableCoinId not found"),
+                _ => throw new ArgumentOutOfRangeException(nameof(sourceChain), sourceChain, null)
+            },
+            TokenType.Native => throw new InvalidOperationException("Cannot bridge native Token."),
+            _ => throw new ArgumentOutOfRangeException(nameof(tokenType), tokenType, null)
+        };
     }
 
     public record AwaitingBridgeAmount(BlockchainName TargetChain, double OriginalAmount, double SendAmount, Message OriginalMessage);
