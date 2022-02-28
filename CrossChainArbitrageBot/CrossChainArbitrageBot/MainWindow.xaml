@@ -299,7 +299,9 @@
         
         <Border Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="2" BorderThickness="1"
                 BorderBrush="LightGray" Margin="5,0,5,5">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          ScrollChanged="ImportantNoticeViewerOnScrollChanged"
+                          x:Name="ImportantNoticeViewer">
                 <ItemsControl ItemsSource="{Binding ImportantNotices}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

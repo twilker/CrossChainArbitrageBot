@@ -109,7 +109,8 @@ public class DataSimulator : InterceptorAgent
             ManipulateUpdate(dataUpdate);
         }
 
-        OnMessage(SimulatedDataUpdated.Decorate(new DataUpdated(messageData, updates.ToArray())));
+        SimulatedDataUpdated message = SimulatedDataUpdated.Decorate(new DataUpdated(messageData, updates.ToArray()));
+        OnMessage(message);
         return InterceptionAction.DoNotPublish;
 
         void ManipulateUpdate(DataUpdate dataUpdate)
@@ -133,7 +134,6 @@ public class DataSimulator : InterceptorAgent
             }
             else
             {
-                unstablePrice = dataUpdate.UnstablePrice;
                 liquidity = dataUpdate.Liquidity;
             }
 

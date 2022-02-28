@@ -36,6 +36,7 @@ public class ArbitrageLoopHandler : Agent
             latestSpreadData = messageData.Get<SpreadDataUpdated>();
             avalancheUpdate = latestData.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
             bscUpdate = latestData.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
+            CheckIdleAutoLoop(messageData);
             return;
         }
         if (messageData.TryGet(out TransactionFinished finished))
@@ -102,7 +103,38 @@ public class ArbitrageLoopHandler : Agent
 
     private void AutoLoop(Message messageData)
     {
-        throw new NotImplementedException();
+        if (loopState.Kind == LoopKind.Auto)
+        {
+            loopState = loopState.RequestAutoLoopCancel();
+            return;
+        }
+        
+        ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+        CheckIdleAutoLoop(messageData);
+    }
+
+    private void CheckIdleAutoLoop(Message messageData)
+    {
+        if (loopState.State != LoopState.Idle || loopState.Kind != LoopKind.Auto)
+        {
+            return;
+        }
+        
+        if (loopState.AutoLoopCancelRequested)
+        {
+            ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
+            return;
+        }
+
+        if (MinimalProfitPossible())
+        {
+            ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Auto), messageData);
+            Loop(messageData, m =>
+            {
+                ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+                CheckIdleAutoLoop(m);
+            });
+        }
     }
 
     private void Loop(Message messageData, Action<Message> nextAction)
@@ -111,6 +143,10 @@ public class ArbitrageLoopHandler : Agent
 
         BlockchainName buySide = BuySide.BlockchainName;
         BlockchainName sellSide = SellSide.BlockchainName;
+        double totalNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
+                                                                    dataUpdate.UnstableAmount *
+                                                                    dataUpdate.UnstablePrice +
+                                                                    dataUpdate.AccountBalance * dataUpdate.NativePrice);
         SyncTrade(messageData, m =>
         {
             TransactionStarted[] bridges = {
@@ -122,7 +158,17 @@ public class ArbitrageLoopHandler : Agent
                     TransactionType.BridgeStable),
             };
             
-            loopState = loopState.PushNextAction(nextAction);
+            loopState = loopState.PushNextAction(futureMessage =>
+            {
+                double afterLoopNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
+                                                                             dataUpdate.UnstableAmount *
+                                                                             dataUpdate.UnstablePrice +
+                                                                             dataUpdate.AccountBalance * dataUpdate.NativePrice);
+                OnMessage(new ImportantNotice(futureMessage, $"Loop executed successfully. Profit - " +
+                                                             $"{afterLoopNetWorth - totalNetWorth:F2}$ - " +
+                                                             $"{(afterLoopNetWorth - totalNetWorth) / totalNetWorth * 100:F2}%"));
+                nextAction(futureMessage);
+            });
             foreach (TransactionStarted bridge in bridges)
             {
                 waitingTransactions.Add(bridge);
@@ -134,6 +180,7 @@ public class ArbitrageLoopHandler : Agent
 
     private void PrepareLoop(Message messageData, Action<Message> nextAction)
     {
+        OnMessage(new ImportantNotice(messageData, "Preparing loop (check native balance + bridge)"));
         List<TransactionStarted> preparationTransactions = new();
         if (BuySide.AccountBalance * BuySide.NativePrice < MinimalGasPreLoop)
         {
@@ -198,11 +245,11 @@ public class ArbitrageLoopHandler : Agent
     private void SyncTrade(Message messageData, Action<Message> nextAction)
     {
         TransactionStarted buy = new(messageData,
-                                     OptimalVolume / BuySide.StableAmount,
+                                     OptimalBuyVolume / BuySide.StableAmount,
                                      BuySide.BlockchainName,
                                      TransactionType.StableToUnstable);
         TransactionStarted sell = new(messageData,
-                                      OptimalVolume / SellSide.UnstablePrice / SellSide.UnstableAmount,
+                                      OptimalSellVolume / SellSide.UnstablePrice / SellSide.UnstableAmount,
                                       SellSide.BlockchainName,
                                       TransactionType.UnstableToStable);
         waitingTransactions.Add(buy);
@@ -216,7 +263,8 @@ public class ArbitrageLoopHandler : Agent
 
     private bool CanAutoLoop()
     {
-        return loopState.State != LoopState.Stopped ||
+        return loopState.Kind == LoopKind.Auto ||
+               loopState.State == LoopState.Stopped &&
                LoopFundsFound();
     }
 
@@ -262,6 +310,38 @@ public class ArbitrageLoopHandler : Agent
         }
     }
 
+    private double OptimalBuyVolume
+    {
+        get
+        {
+            if (OptimalVolume - latestSpreadData!.MaximumVolumeToTargetSpread / 2 < 0.1)
+            {
+                //more net worth than optimal volume -> reduce buy volume to sync wallet worths
+                double expectedTargetPrice = Math.Pow(SellSide.Liquidity.UsdPaired + OptimalVolume, 2) /
+                                             SellSide.Liquidity.Constant;
+                double targetAmount = OptimalVolume / expectedTargetPrice;
+                double buyAmount = BuySide.Liquidity.UsdPaired -
+                                   BuySide.Liquidity.Constant / (BuySide.Liquidity.TokenAmount + targetAmount);
+                return Math.Min(buyAmount, OptimalVolume);
+            }
+            else
+            {
+                //less net worth than volume -> OptimalSellVolume syncs net worth between chains
+                return OptimalVolume;
+            }
+        }
+    }
+
+    private double OptimalSellVolume
+    {
+        get
+        {
+            double unstableValue = latestData!.Updates.Max(u => u.UnstableAmount * SellSide.UnstablePrice);
+            double volume = new[] { unstableValue, latestSpreadData!.MaximumVolumeToTargetSpread / 2 }.Min();
+            return volume;
+        }
+    }
+
     private DataUpdate BuySide => latestSpreadData!.Spread > 0 ? bscUpdate!.Value : avalancheUpdate!.Value;
     private DataUpdate SellSide => latestSpreadData!.Spread > 0 ? avalancheUpdate!.Value : bscUpdate!.Value;
 
@@ -277,17 +357,22 @@ public class ArbitrageLoopHandler : Agent
         OnMessage(new LoopStateChanged(message, newState.Kind == LoopKind.Auto, newState.State));
     }
 
-    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message>? NextAction=null)
+    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message>? NextAction=null, bool AutoLoopCancelRequested = false)
     {
         public InternalLoopState PushNextAction(Action<Message> nextAction)
         {
-            return new InternalLoopState(State, Kind, nextAction);
+            return new InternalLoopState(State, Kind, nextAction, AutoLoopCancelRequested);
         }
 
         public InternalLoopState PopAction(out Action<Message>? nextAction)
         {
             nextAction = NextAction;
-            return new InternalLoopState(State, Kind);
+            return new InternalLoopState(State, Kind, AutoLoopCancelRequested:AutoLoopCancelRequested);
+        }
+
+        public InternalLoopState RequestAutoLoopCancel()
+        {
+            return new InternalLoopState(State, Kind, NextAction, true);
         }
     }
 }

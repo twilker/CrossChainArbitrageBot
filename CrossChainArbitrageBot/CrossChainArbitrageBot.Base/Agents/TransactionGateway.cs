@@ -95,7 +95,8 @@ internal class TransactionGateway : Agent
                                             lastUpdate.StableAmount * set.Message2.TransactionAmount,
                                             targetUpdate.StableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.StableDecimals,
-                                            GetBridgeSourceToken(TokenType.Stable, BlockchainName.Avalanche)));
+                                            GetBridgeSourceToken(TokenType.Stable, BlockchainName.Avalanche),
+                                            TokenType.Stable));
                 break;
             case TransactionType.BridgeUnstable:
                 targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
@@ -106,7 +107,8 @@ internal class TransactionGateway : Agent
                                             lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
                                             targetUpdate.UnstableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
-                                            GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Avalanche)));
+                                            GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Avalanche),
+                                            TokenType.Unstable));
                 break;
             case TransactionType.StableToNative:
                 OnMessage(new ImportantNotice(set, $"Trading 10 {lastUpdate.StableSymbol} for AVAX on Avalanche"));
@@ -187,7 +189,8 @@ internal class TransactionGateway : Agent
                                             lastUpdate.StableAmount * set.Message2.TransactionAmount,
                                             targetUpdate.StableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.StableDecimals,
-                                            GetBridgeSourceToken(TokenType.Stable, BlockchainName.Bsc)));
+                                            GetBridgeSourceToken(TokenType.Stable, BlockchainName.Bsc),
+                                            TokenType.Stable));
                 break;
             case TransactionType.BridgeUnstable:
                 targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
@@ -198,7 +201,8 @@ internal class TransactionGateway : Agent
                                             lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
                                             targetUpdate.UnstableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
-                                            GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Bsc)));
+                                            GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Bsc),
+                                            TokenType.Unstable));
                 break;
             case TransactionType.StableToNative:
                 OnMessage(new ImportantNotice(set, $"Trading 10 {lastUpdate.StableSymbol} for BNB on BSC"));

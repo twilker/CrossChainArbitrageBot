@@ -5,7 +5,7 @@ namespace CrossChainArbitrageBot.Base.Messages;
 
 public class TokenBridging : Message
 {
-    public TokenBridging(Message predecessorMessage, BlockchainName sourceChain, double amount, double originalTargetAmount, string targetWallet, int decimals, string bridgedSourceToken) : base(predecessorMessage)
+    public TokenBridging(Message predecessorMessage, BlockchainName sourceChain, double amount, double originalTargetAmount, string targetWallet, int decimals, string bridgedSourceToken, TokenType tokenType) : base(predecessorMessage)
     {
         SourceChain = sourceChain;
         Amount = amount;
@@ -13,9 +13,10 @@ public class TokenBridging : Message
         TargetWallet = targetWallet;
         Decimals = decimals;
         BridgedSourceToken = bridgedSourceToken;
+        TokenType = tokenType;
     }
 
-    public TokenBridging(IEnumerable<Message> predecessorMessages, BlockchainName sourceChain, double amount, double originalTargetAmount, string targetWallet, int decimals, string bridgedSourceToken) : base(predecessorMessages)
+    public TokenBridging(IEnumerable<Message> predecessorMessages, BlockchainName sourceChain, double amount, double originalTargetAmount, string targetWallet, int decimals, string bridgedSourceToken, TokenType tokenType) : base(predecessorMessages)
     {
         SourceChain = sourceChain;
         Amount = amount;
@@ -23,6 +24,7 @@ public class TokenBridging : Message
         TargetWallet = targetWallet;
         Decimals = decimals;
         BridgedSourceToken = bridgedSourceToken;
+        TokenType = tokenType;
     }
 
     public BlockchainName SourceChain { get; }
@@ -31,7 +33,7 @@ public class TokenBridging : Message
     public string TargetWallet { get; }
     public int Decimals { get; }
     public string BridgedSourceToken { get; }
-    public TokenType TokenType { get; set; }
+    public TokenType TokenType { get; }
 
     protected override string DataToString()
     {

@@ -109,7 +109,7 @@ public class CelerTokenBridge : Agent
             JObject jObject = JObject.Parse(contentCall.Result);
             JObject? lastSendLog = jObject["data"]?["items"]?.Children<JObject>()
                                                              .Where(e => e["log_events"]?.Any() == true)
-                                                             .Select(e => (JObject?)e["log_events"]?[0]?["decoded"])
+                                                             .Select(e => e["log_events"]?[0]?["decoded"] as JObject)
                                                              .FirstOrDefault(e => e?["name"]?.Value<string>() == "Send");
             if (lastSendLog == null)
             {
