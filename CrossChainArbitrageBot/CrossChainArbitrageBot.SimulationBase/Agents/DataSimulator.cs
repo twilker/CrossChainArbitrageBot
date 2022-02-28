@@ -12,10 +12,12 @@ namespace CrossChainArbitrageBot.SimulationBase.Agents;
 [Intercepts(typeof(DataUpdated))]
 [Consumes(typeof(WalletBalanceUpdated))]
 [Consumes(typeof(PriceUpdated))]
+[Consumes(typeof(LiquidityOffsetUpdated))]
 public class DataSimulator : InterceptorAgent
 {
     private readonly ConcurrentDictionary<BlockchainName, Wallet> wallets = new();
     private readonly ConcurrentDictionary<BlockchainName, double> prices = new();
+    private readonly ConcurrentDictionary<BlockchainName, LiquidityOffset> offsets = new();
     public DataSimulator(IMessageBoard messageBoard) : base(messageBoard)
     {
     }
@@ -25,6 +27,16 @@ public class DataSimulator : InterceptorAgent
         if (messageData.TryGet(out PriceUpdated priceUpdated))
         {
             ProcessPriceUpdate(priceUpdated);
+            return;
+        }
+
+        if (messageData.TryGet(out LiquidityOffsetUpdated liquidityOffsetUpdated))
+        {
+            offsets.AddOrUpdate(liquidityOffsetUpdated.BlockchainName,
+                                _ => liquidityOffsetUpdated.Offset,
+                                (_, offset) => new LiquidityOffset(
+                                    liquidityOffsetUpdated.Offset.TokenOffset + offset.TokenOffset,
+                                    liquidityOffsetUpdated.Offset.UsdOffset + offset.UsdOffset));
             return;
         }
         WalletBalanceUpdated updated = messageData.Get<WalletBalanceUpdated>();
@@ -42,6 +54,9 @@ public class DataSimulator : InterceptorAgent
             prices.AddOrUpdate(priceUpdated.BlockchainName,
                                _ => priceUpdated.PriceOverride.Value,
                                (_, _) => priceUpdated.PriceOverride.Value);
+            offsets.AddOrUpdate(priceUpdated.BlockchainName,
+                                _ => new LiquidityOffset(0, 0),
+                                (_, _) => new LiquidityOffset(0, 0));
         }
     }
 
@@ -91,17 +106,18 @@ public class DataSimulator : InterceptorAgent
         List<DataUpdate> updates = new();
         foreach (DataUpdate dataUpdate in originalMessage.Updates)
         {
-            if (!wallets.ContainsKey(dataUpdate.BlockchainName))
-            {
-                wallets.TryAdd(dataUpdate.BlockchainName,
-                               new Wallet(dataUpdate.UnstableAmount, dataUpdate.StableAmount,
-                                          dataUpdate.AccountBalance));
-            }
+            ManipulateUpdate(dataUpdate);
+        }
 
-            if (!wallets.TryGetValue(dataUpdate.BlockchainName, out Wallet currentState))
-            {
-                throw new InvalidOperationException("Simulated wallet was not configured.");
-            }
+        OnMessage(SimulatedDataUpdated.Decorate(new DataUpdated(messageData, updates.ToArray())));
+        return InterceptionAction.DoNotPublish;
+
+        void ManipulateUpdate(DataUpdate dataUpdate)
+        {
+            (double unstableAmount, double stableAmount, double nativeAmount) = wallets.GetOrAdd(
+                dataUpdate.BlockchainName, new Wallet(
+                    dataUpdate.UnstableAmount, dataUpdate.StableAmount,
+                    dataUpdate.AccountBalance));
 
             Liquidity liquidity;
             double unstablePrice;
@@ -120,24 +136,29 @@ public class DataSimulator : InterceptorAgent
                 unstablePrice = dataUpdate.UnstablePrice;
                 liquidity = dataUpdate.Liquidity;
             }
+
+            (double tokenOffset, double usdOffset) = offsets.GetOrAdd(dataUpdate.BlockchainName, _ => new LiquidityOffset(0, 0));
+            liquidity = new Liquidity(liquidity.TokenAmount + tokenOffset,
+                                      liquidity.UsdPaired + usdOffset,
+                                      liquidity.PairedTokenId,
+                                      liquidity.UnstableTokenId);
+            unstablePrice = liquidity.UsdPaired / liquidity.TokenAmount;
+
             updates.Add(new DataUpdate(dataUpdate.BlockchainName,
                                        unstablePrice,
-                                       currentState.UnstableAmount,
+                                       unstableAmount,
                                        dataUpdate.UnstableSymbol,
                                        dataUpdate.UnstableId,
                                        dataUpdate.UnstableDecimals,
                                        liquidity,
-                                       currentState.StableAmount,
+                                       stableAmount,
                                        dataUpdate.StableSymbol,
                                        dataUpdate.StableId,
                                        dataUpdate.StableDecimals,
                                        dataUpdate.NativePrice,
-                                       currentState.NativeAmount,
+                                       nativeAmount,
                                        dataUpdate.WalletAddress));
         }
-
-        OnMessage(SimulatedDataUpdated.Decorate(new DataUpdated(messageData, updates.ToArray())));
-        return InterceptionAction.DoNotPublish;
     }
 
     private readonly record struct Wallet(double UnstableAmount, double StableAmount, double NativeAmount);

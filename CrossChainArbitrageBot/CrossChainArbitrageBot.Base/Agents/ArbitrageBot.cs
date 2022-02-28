@@ -86,7 +86,7 @@ internal class ArbitrageBot : Agent
                                                       ConfigurationManager.AppSettings["BscNativeCoinId"]
                                                      ?? throw new ConfigurationErrorsException("BscNativeCoinId not configured"),
                                                       Math.Min(unstableAmount, lastUpdate.UnstableAmount),
-                                                      TradingPlatform.PancakeSwap, lastUpdate.StableDecimals,
+                                                      TradingPlatform.PancakeSwap, lastUpdate.UnstableDecimals,
                                                       lastUpdate.WalletAddress,
                                                       lastUpdate.Liquidity));
                         break;
@@ -149,7 +149,7 @@ internal class ArbitrageBot : Agent
                                                       ConfigurationManager.AppSettings["AvalancheNativeCoinId"]
                                                       ?? throw new ConfigurationErrorsException("AvalancheNativeCoinId not configured"),
                                                       Math.Min(unstableAmount, lastUpdate.UnstableAmount),
-                                                      TradingPlatform.TraderJoe, lastUpdate.StableDecimals,
+                                                      TradingPlatform.TraderJoe, lastUpdate.UnstableDecimals,
                                                       lastUpdate.WalletAddress,
                                                       lastUpdate.Liquidity));
                         break;
