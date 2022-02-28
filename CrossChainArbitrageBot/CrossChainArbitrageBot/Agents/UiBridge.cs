@@ -60,6 +60,9 @@ internal class UiBridge : Agent
                     viewModel.BscUnstablePrice = dataUpdate.UnstablePrice;
                     viewModel.BscUnstableToken = dataUpdate.UnstableSymbol;
                     viewModel.BscAccountBalance = dataUpdate.AccountBalance;
+                    viewModel.BscNetWorth = dataUpdate.StableAmount + 
+                                            dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
+                                            dataUpdate.AccountBalance * dataUpdate.NativePrice;
                     bscLiquidity = dataUpdate.Liquidity;
                     break;
                 case BlockchainName.Avalanche:
@@ -70,6 +73,9 @@ internal class UiBridge : Agent
                     viewModel.AvalancheUnstablePrice = dataUpdate.UnstablePrice;
                     viewModel.AvalancheUnstableToken = dataUpdate.UnstableSymbol;
                     viewModel.AvalancheAccountBalance = dataUpdate.AccountBalance;
+                    viewModel.AvalancheNetWorth = dataUpdate.StableAmount +
+                                                  dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
+                                                  dataUpdate.AccountBalance * dataUpdate.NativePrice;
                     avalancheLiquidity = dataUpdate.Liquidity;
                     break;
                 default:
@@ -77,6 +83,7 @@ internal class UiBridge : Agent
             }
         }
 
+        viewModel.TotalNetWorth = viewModel.BscNetWorth + viewModel.AvalancheNetWorth;
         viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
         if (double.IsPositiveInfinity(viewModel.Spread) ||
             double.IsNegativeInfinity(viewModel.Spread) ||

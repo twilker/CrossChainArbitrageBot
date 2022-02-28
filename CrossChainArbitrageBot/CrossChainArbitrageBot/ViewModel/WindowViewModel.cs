@@ -27,6 +27,9 @@ public class WindowViewModel : INotifyPropertyChanged
     private double bscAccountBalance;
     private double avalancheAccountBalance;
     private int transactionPercentage;
+    private double bscNetWorth;
+    private double avalancheNetWorth;
+    private double totalNetWorth;
 
     public double Spread
     {
@@ -138,6 +141,17 @@ public class WindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public double BscNetWorth
+    {
+        get => bscNetWorth;
+        set
+        {
+            if (value.Equals(bscNetWorth)) return;
+            bscNetWorth = value;
+            OnPropertyChanged();
+        }
+    }
+
     public double AvalancheUnstableAmount
     {
         get => avalancheUnstableAmount;
@@ -200,6 +214,28 @@ public class WindowViewModel : INotifyPropertyChanged
         {
             if (value == avalancheUnstableToken) return;
             avalancheUnstableToken = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double AvalancheNetWorth
+    {
+        get => avalancheNetWorth;
+        set
+        {
+            if (value.Equals(avalancheNetWorth)) return;
+            avalancheNetWorth = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double TotalNetWorth
+    {
+        get => totalNetWorth;
+        set
+        {
+            if (value.Equals(totalNetWorth)) return;
+            totalNetWorth = value;
             OnPropertyChanged();
         }
     }

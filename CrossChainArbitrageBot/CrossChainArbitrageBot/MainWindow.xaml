@@ -7,13 +7,15 @@
         xmlns:viewModel="clr-namespace:CrossChainArbitrageBot.ViewModel"
         d:DataContext="{d:DesignInstance viewModel:WindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="650" Width="800">
+        Title="MainWindow" Height="700" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -114,14 +116,26 @@
                    HorizontalAlignment="Center"
                    Text="{Binding AvalancheAccountBalance, StringFormat={}AVAX Amount: {0:F4}}"/>
         
-        <DockPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+        <TextBlock Grid.Row="7" Grid.Column="0"
+                   HorizontalAlignment="Center"
+                   Text="{Binding BscNetWorth, StringFormat={}Net Worth: {0:F2}$}"/>
+        <TextBlock Grid.Row="7" Grid.Column="1"
+                   HorizontalAlignment="Center"
+                   Text="{Binding AvalancheNetWorth, StringFormat={}Net Worth: {0:F2}$}"/>
+        
+        <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" FontSize="16" 
+                   Margin="0,5,0,5"
+                   Text="{Binding TotalNetWorth, StringFormat={}Total Net Worth: {0:F2}$}"
+                   HorizontalAlignment="Center"/>
+        
+        <DockPanel Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2"
             VerticalAlignment="Center" Margin="10" HorizontalAlignment="Center">
             <TextBox Text="{Binding ElementName=slValue, Path=Value, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" TextAlignment="Right" Width="40" />
             <Slider Maximum="100" TickPlacement="BottomRight" TickFrequency="1" IsSnapToTickEnabled="True" Name="slValue" 
                     Value="{Binding TransactionPercentage}"  Width="400" Margin="0,0,20,0"/>
         </DockPanel>
 
-        <StackPanel Grid.Row="8" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="10" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding BscStableToUnstableCommand}">
                 <Button.Content>
@@ -151,7 +165,7 @@
             </Button>
         </StackPanel>
         
-        <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding AvalancheStableToUnstableCommand}">
                 <Button.Content>
@@ -181,7 +195,7 @@
             </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="9" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="11" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding BscBridgeStableCommand}">
                 <Button.Content>
@@ -198,7 +212,7 @@
             </Button>
         </StackPanel>
         
-        <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding AvalancheBridgeStableCommand}">
                 <Button.Content>
@@ -216,7 +230,7 @@
             </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="10" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="12" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding BscStableToNativeCommand}">
                 <Button.Content>
@@ -233,7 +247,7 @@
             </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="12" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button HorizontalAlignment="Center" Margin="10"
                     Command="{Binding AvalancheStableToNativeCommand}">
                 <Button.Content>
@@ -249,7 +263,8 @@
                 </Button.Content>
             </Button>
         </StackPanel>
-        <Border Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" BorderThickness="1"
+        
+        <Border Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" BorderThickness="1"
                 BorderBrush="LightGray" Margin="5,0,5,5">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding ImportantNotices}">
