@@ -209,6 +209,86 @@ public class SimulationBlockchainExecuter : Agent
         OnMessage(new TradeCompleted(executing, true));
     }
 
+    private void BridgeToken(TransactionExecuting executing)
+    {
+        if (latestUpdate == null)
+        {
+            OnMessage(new TransactionExecuted(executing, false));
+            return;
+        }
+        
+        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == executing.BlockchainName);
+        DataUpdate targetData = latestUpdate.Updates.First(d => d.BlockchainName != executing.BlockchainName);
+        object[] parameters = executing.Parameters;
+        bool isStable = ((string)parameters[1]).Equals(data.BlockchainName switch
+        {
+            BlockchainName.Bsc => ConfigurationManager.AppSettings["BscStableCoinId"],
+            BlockchainName.Avalanche => ConfigurationManager.AppSettings["AvalancheStableCoinId"],
+            _ => throw new ArgumentOutOfRangeException()
+        }, StringComparison.OrdinalIgnoreCase);
+        double gasCosts = data.BlockchainName switch
+        {
+            BlockchainName.Bsc => celerBridgeBscGasCosts,
+            BlockchainName.Avalanche => celerBridgeAvalancheGasCosts,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        
+        WalletBalanceUpdate nativeUpdate;
+        WalletBalanceUpdate sourceTokenUpdate;
+        WalletBalanceUpdate targetTokenUpdate;
+        double amount;
+        if (isStable)
+        {
+            nativeUpdate = new WalletBalanceUpdate(data.BlockchainName,
+                                                   TokenType.Native,
+                                                   data.AccountBalance - gasCosts / data.NativePrice);
+            amount = (double)Web3.Convert.FromWei((BigInteger)parameters[2], data.StableDecimals);
+            sourceTokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
+                                                        TokenType.Stable,
+                                                        data.StableAmount - amount);
+            targetTokenUpdate = new WalletBalanceUpdate(targetData.BlockchainName,
+                                                        TokenType.Stable,
+                                                        targetData.StableAmount + amount-celerBridgeCosts);
+        }
+        else
+        {
+            nativeUpdate = new WalletBalanceUpdate(data.BlockchainName,
+                                                   TokenType.Native,
+                                                   data.AccountBalance - gasCosts / data.NativePrice);
+            amount = (double)Web3.Convert.FromWei((BigInteger)parameters[2], data.UnstableDecimals);
+            sourceTokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
+                                                        TokenType.Unstable,
+                                                        data.UnstableAmount - amount);
+            targetTokenUpdate = new WalletBalanceUpdate(targetData.BlockchainName,
+                                                        TokenType.Unstable,
+                                                        targetData.UnstableAmount + amount -
+                                                        celerBridgeCosts / targetData.UnstablePrice);
+        }
+
+        if (nativeUpdate.NewBalance < 0 ||
+            sourceTokenUpdate.NewBalance < 0 ||
+            targetTokenUpdate.NewBalance < 0)
+        {
+            OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Source Token - {sourceTokenUpdate}; Native - {nativeUpdate}; Target Token - {targetTokenUpdate}"));
+            OnMessage(new TradeCompleted(executing, false));
+            return;
+        }
+
+        OnMessage(new ImportantNotice(executing, $"Bridging token. ETA: {DateTime.Now+new TimeSpan(0,0,0,0,celerBridgeDuration):HH:mm:ss}"));
+        Thread.Sleep(executing.BlockchainName switch
+        {
+            BlockchainName.Bsc => celerBridgeDuration,
+            BlockchainName.Avalanche => celerBridgeDuration,
+            _ => throw new ArgumentOutOfRangeException()
+        });
+
+        OnMessage(new ImportantNotice(
+                      executing,
+                      $"Simulated bridge completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {data.BlockchainName}"));
+        OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, sourceTokenUpdate, targetTokenUpdate));
+        OnMessage(new TradeCompleted(executing, true));
+    }
+
     protected override void ExecuteCore(Message messageData)
     {
         if (messageData.TryGet(out DataUpdated updated))
@@ -232,6 +312,12 @@ public class SimulationBlockchainExecuter : Agent
                 default:
                     throw new InvalidOperationException("Not implemented.");
             }
+        }
+        else if ((executing.ContractAddress.Equals(bscCelerBridgeAddress, StringComparison.OrdinalIgnoreCase) ||
+                 executing.ContractAddress.Equals(avalancheCelerBridgeAddress, StringComparison.OrdinalIgnoreCase)) &&
+                 executing.FunctionName == "send")
+        {
+            BridgeToken(executing);
         }
         else
         {
