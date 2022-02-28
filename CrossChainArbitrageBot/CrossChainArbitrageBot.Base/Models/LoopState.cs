@@ -6,3 +6,11 @@ public enum LoopState
     Idle,
     Running
 }
+
+public enum LoopKind
+{
+    None,
+    SyncTrade,
+    Single,
+    Auto
+}

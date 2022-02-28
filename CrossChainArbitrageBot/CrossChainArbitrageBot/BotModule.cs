@@ -15,6 +15,7 @@ public class BotModule : Module
     {
         builder.RegisterType<UiBridge>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<MainWindow>().AsSelf().InstancePerLifetimeScope();
+        builder.RegisterType<MessageBoard>().As<IMessageBoard>().InstancePerLifetimeScope();
         builder.RegisterModule<BaseModule>();
         if (ConfigurationManager.GetSection("SimulationConfiguration") is NameValueCollection config &&
             bool.TryParse(config["RunSimulation"], out bool simulationMode) &&

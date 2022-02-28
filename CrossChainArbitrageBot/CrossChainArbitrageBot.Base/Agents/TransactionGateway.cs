@@ -11,11 +11,11 @@ namespace CrossChainArbitrageBot.Base.Agents;
 [Consumes(typeof(TokenBridged))]
 [Produces(typeof(TradeInitiating))]
 [Produces(typeof(TransactionFinished))]
-internal class ArbitrageBot : Agent
+internal class TransactionGateway : Agent
 {
     private readonly MessageCollector<DataUpdated, TransactionStarted> collector;
 
-    public ArbitrageBot(IMessageBoard messageBoard) : base(messageBoard)
+    public TransactionGateway(IMessageBoard messageBoard) : base(messageBoard)
     {
         collector = new MessageCollector<DataUpdated,TransactionStarted>(OnCollected);
     }
@@ -23,6 +23,20 @@ internal class ArbitrageBot : Agent
     private void OnCollected(MessageCollection<DataUpdated, TransactionStarted> set)
     {
         set.MarkAsConsumed(set.Message2);
+
+        if (set.Message2.Type == TransactionType.AutoLoop ||
+            set.Message2.Type == TransactionType.SynchronizedTrade ||
+            set.Message2.Type == TransactionType.SingleLoop)
+        {
+            OnMessage(new LoopStarted(set, set.Message2.Type switch
+            {
+                TransactionType.AutoLoop => LoopKind.Auto,
+                TransactionType.SynchronizedTrade => LoopKind.SyncTrade,
+                TransactionType.SingleLoop => LoopKind.Single,
+                _ => throw new ArgumentOutOfRangeException()
+            }));
+            return;
+        }
 
         switch (set.Message2.Chain)
         {

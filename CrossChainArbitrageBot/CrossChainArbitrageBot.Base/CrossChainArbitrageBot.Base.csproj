@@ -9,6 +9,7 @@
     <ItemGroup>
       <PackageReference Include="Agents.Net" Version="2021.6.2" />
       <PackageReference Include="Autofac" Version="6.3.0" />
+      <PackageReference Include="ConcurrentHashSet" Version="1.3.0" />
       <PackageReference Include="Moralis.Web3Api" Version="1.0.8" />
       <PackageReference Include="Nethereum.Web3" Version="4.2.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />

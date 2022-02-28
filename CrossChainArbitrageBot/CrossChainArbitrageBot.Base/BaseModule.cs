@@ -10,10 +10,10 @@ public class BaseModule : Module
     {
         builder.RegisterType<DataCrawler>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<PancakeSwapTrader>().As<Agent>().InstancePerLifetimeScope();
-        builder.RegisterType<ArbitrageBot>().As<Agent>().InstancePerLifetimeScope();
+        builder.RegisterType<TransactionGateway>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<TraderJoeTrader>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<CelerTokenBridge>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<DataCalculationEngine>().As<Agent>().InstancePerLifetimeScope();
-        builder.RegisterType<MessageBoard>().As<IMessageBoard>().InstancePerLifetimeScope();
+        builder.RegisterType<ArbitrageLoopHandler>().As<Agent>().InstancePerLifetimeScope();
     }
 }

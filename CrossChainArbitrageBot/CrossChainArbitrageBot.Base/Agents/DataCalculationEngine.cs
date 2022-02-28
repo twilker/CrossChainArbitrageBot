@@ -45,28 +45,8 @@ public class DataCalculationEngine : InterceptorAgent
         double avalancheConstant = Math.Sqrt(avalancheLiquidity.TokenAmount * avalancheLiquidity.UsdPaired);
         double bscChange = (Math.Abs(spread) - targetSpread) *(avalancheConstant/(avalancheConstant+bscConstant));
         double maximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
-        double profitByMaximumVolume = SimulateOptimalSellAndBuy(bscLiquidity, avalancheLiquidity, maximumVolumeToTargetSpread/2, spread > 0);
+        double profitByMaximumVolume = (maximumVolumeToTargetSpread/2).CalculateProfit(bscLiquidity, avalancheLiquidity, spread > 0);
         return new SpreadProfit(maximumVolumeToTargetSpread, profitByMaximumVolume, targetSpread);
-    }
-
-    private static double SimulateOptimalSellAndBuy(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double volume, bool buyOnBsc)
-    {
-        (double buyTokenAmount, double buyUsdPaired, _, _) = buyOnBsc ? bscLiquidity : avalancheLiquidity;
-        (double sellTokenAmount, double sellUsdPaired, _, _) = buyOnBsc ? avalancheLiquidity : bscLiquidity;
-        double tokenAmount = volume / (buyUsdPaired / buyTokenAmount);
-            
-        //simulate buy
-        double newUsd = buyUsdPaired + volume;
-        double newToken = buyTokenAmount * buyUsdPaired / newUsd;
-        double tokenReceived = buyTokenAmount - newToken;
-            
-        //simulate sell
-        newToken = sellTokenAmount + tokenAmount;
-        newUsd = sellTokenAmount * sellUsdPaired / newToken;
-        double soldValue = sellUsdPaired - newUsd;
-        double boughtValue = tokenReceived * newUsd / newToken;
-
-        return boughtValue + soldValue - volume - tokenAmount * sellUsdPaired / sellTokenAmount;
     }
 
     private double CalculateVolumeSpreadOptimum(Liquidity liquidity, double targetSpreadChange)
