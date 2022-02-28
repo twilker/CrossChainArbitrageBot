@@ -5,17 +5,17 @@ namespace CrossChainArbitrageBot.Base.Messages;
 
 public class TransactionStarted : Message
 {
-    public TransactionStarted(Message predecessorMessage, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessage)
+    public TransactionStarted(Message predecessorMessage, double? transactionAmount, BlockchainName? chain, TransactionType type) : base(predecessorMessage)
     {
-        TransactionAmount = transactionAmount;
-        Chain = chain;
+        TransactionAmount = transactionAmount ?? 0;
+        Chain = chain ?? BlockchainName.Bsc;
         Type = type;
     }
 
-    public TransactionStarted(IEnumerable<Message> predecessorMessages, double transactionAmount, BlockchainName chain, TransactionType type) : base(predecessorMessages)
+    public TransactionStarted(IEnumerable<Message> predecessorMessages, double? transactionAmount, BlockchainName? chain, TransactionType type) : base(predecessorMessages)
     {
-        TransactionAmount = transactionAmount;
-        Chain = chain;
+        TransactionAmount = transactionAmount ?? 0;
+        Chain = chain ?? BlockchainName.Bsc;
         Type = type;
     }
 

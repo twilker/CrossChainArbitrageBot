@@ -13,6 +13,7 @@ public class BaseModule : Module
         builder.RegisterType<ArbitrageBot>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<TraderJoeTrader>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<CelerTokenBridge>().As<Agent>().InstancePerLifetimeScope();
+        builder.RegisterType<DataCalculationEngine>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<MessageBoard>().As<IMessageBoard>().InstancePerLifetimeScope();
     }
 }

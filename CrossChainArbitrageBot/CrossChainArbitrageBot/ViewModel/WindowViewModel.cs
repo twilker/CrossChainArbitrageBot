@@ -30,6 +30,8 @@ public class WindowViewModel : INotifyPropertyChanged
     private double bscNetWorth;
     private double avalancheNetWorth;
     private double totalNetWorth;
+    private bool isLoopOnAuto;
+    private LoopState loopState;
 
     public double Spread
     {
@@ -251,6 +253,28 @@ public class WindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsLoopOnAuto
+    {
+        get => isLoopOnAuto;
+        set
+        {
+            if (value == isLoopOnAuto) return;
+            isLoopOnAuto = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public LoopState LoopState
+    {
+        get => loopState;
+        set
+        {
+            if (value == loopState) return;
+            loopState = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand BscUnstableToStableCommand { get; }
 
     public ICommand BscStableToUnstableCommand { get; }
@@ -274,23 +298,53 @@ public class WindowViewModel : INotifyPropertyChanged
     public ICommand AvalancheStableToNativeCommand { get; }
     
     public ICommand AvalancheUnstableToNativeCommand { get; }
+    
+    public ICommand SynchronizedTradeCommand { get; }
+    
+    public ICommand SingleLoopCommand { get; }
+    
+    public ICommand AutoLoopCommand { get; }
 
     public ObservableCollection<string> ImportantNotices { get; } = new();
 
     public WindowViewModel()
     {
-        BscUnstableToStableCommand = new RelayCommand(BscUnstableToStable);
-        BscStableToUnstableCommand = new RelayCommand(BscStableToUnstable);
-        AvalancheUnstableToStableCommand = new RelayCommand(AvalancheUnstableToStable);
-        AvalancheStableToUnstableCommand = new RelayCommand(AvalancheStableToUnstable);
-        BscBridgeStableCommand = new RelayCommand(BscBridgeStable);
-        BscBridgeUnstableCommand = new RelayCommand(BscBridgeUnstable);
-        AvalancheBridgeStableCommand = new RelayCommand(AvalancheBridgeStable);
-        AvalancheBridgeUnstableCommand = new RelayCommand(AvalancheBridgeUnstable);
-        BscStableToNativeCommand = new RelayCommand(BscStableToNative);
-        BscUnstableToNativeCommand = new RelayCommand(BscUnstableToNative);
-        AvalancheStableToNativeCommand = new RelayCommand(AvalancheStableToNative);
-        AvalancheUnstableToNativeCommand = new RelayCommand(AvalancheUnstableToNative);
+        BscUnstableToStableCommand = new RelayCommand(BscUnstableToStable, CanExecuteCommand);
+        BscStableToUnstableCommand = new RelayCommand(BscStableToUnstable, CanExecuteCommand);
+        AvalancheUnstableToStableCommand = new RelayCommand(AvalancheUnstableToStable, CanExecuteCommand);
+        AvalancheStableToUnstableCommand = new RelayCommand(AvalancheStableToUnstable, CanExecuteCommand);
+        BscBridgeStableCommand = new RelayCommand(BscBridgeStable, CanExecuteCommand);
+        BscBridgeUnstableCommand = new RelayCommand(BscBridgeUnstable, CanExecuteCommand);
+        AvalancheBridgeStableCommand = new RelayCommand(AvalancheBridgeStable, CanExecuteCommand);
+        AvalancheBridgeUnstableCommand = new RelayCommand(AvalancheBridgeUnstable, CanExecuteCommand);
+        BscStableToNativeCommand = new RelayCommand(BscStableToNative, CanExecuteCommand);
+        BscUnstableToNativeCommand = new RelayCommand(BscUnstableToNative, CanExecuteCommand);
+        AvalancheStableToNativeCommand = new RelayCommand(AvalancheStableToNative, CanExecuteCommand);
+        AvalancheUnstableToNativeCommand = new RelayCommand(AvalancheUnstableToNative, CanExecuteCommand);
+        SynchronizedTradeCommand = new RelayCommand(SynchronizedTrade, CanExecuteCommand);
+        SingleLoopCommand = new RelayCommand(SingleLoop, CanExecuteCommand);
+        AutoLoopCommand = new RelayCommand(AutoLoop, _ => !string.IsNullOrEmpty(BscUnstableToken));
+    }
+
+    private bool CanExecuteCommand(object? arg)
+    {
+        return LoopState != LoopState.Running &&
+               !string.IsNullOrEmpty(BscUnstableToken);
+    }
+
+    private void AutoLoop(object? obj)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionType.AutoLoop));
+    }
+
+    private void SingleLoop(object? obj)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionType.SingleLoop));
+    }
+
+    private void SynchronizedTrade(object? obj)
+    {
+        OnTransactionInitiated(new TransactionEventArgs(TransactionType.SynchronizedTrade));
     }
 
     private void BscStableToNative(object? parameter)

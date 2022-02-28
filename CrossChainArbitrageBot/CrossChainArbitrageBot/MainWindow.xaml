@@ -7,13 +7,14 @@
         xmlns:viewModel="clr-namespace:CrossChainArbitrageBot.ViewModel"
         d:DataContext="{d:DesignInstance viewModel:WindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="700" Width="800">
+        Title="MainWindow" Height="750" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -263,8 +264,40 @@
                 </Button.Content>
             </Button>
         </StackPanel>
+
+        <StackPanel Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2"
+                    Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding SynchronizedTradeCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center" Text="Synchronized Trade" />
+                </Button.Content>
+            </Button>
+
+            <Button HorizontalAlignment="Center" Margin="10"
+                    Command="{Binding SingleLoopCommand}">
+                <Button.Content>
+                    <TextBlock HorizontalAlignment="Center"
+                               Text="Loop Once" />
+                </Button.Content>
+            </Button>
+            
+            <Ellipse Margin="10"
+                     Width="10"
+                     Height="10"
+                     Fill="{Binding LoopState, Converter={local:LoopStateTrafficLightConverter}}"/>
+
+            <ToggleButton HorizontalAlignment="Center" Margin="10"
+                          Command="{Binding AutoLoopCommand}"
+                          IsChecked="{Binding IsLoopOnAuto, Mode=OneWay}">
+                <ToggleButton.Content>
+                    <TextBlock HorizontalAlignment="Center"
+                               Text="Auto Loop" />
+                </ToggleButton.Content>
+            </ToggleButton>
+        </StackPanel>
         
-        <Border Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" BorderThickness="1"
+        <Border Grid.Row="14" Grid.Column="0" Grid.ColumnSpan="2" BorderThickness="1"
                 BorderBrush="LightGray" Margin="5,0,5,5">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding ImportantNotices}">

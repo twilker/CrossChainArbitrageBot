@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Input;
 using Agents.Net;
 using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
@@ -11,8 +12,8 @@ namespace CrossChainArbitrageBot.Agents;
 [Consumes(typeof(ImportantNotice))]
 internal class UiBridge : Agent
 {
-    private MainWindow mainWindow;
-    private MainWindowCreated mainWindowCreated;
+    private MainWindow? mainWindow;
+    private MainWindowCreated? mainWindowCreated;
 
     public UiBridge(IMessageBoard messageBoard) : base(messageBoard)
     {
@@ -22,7 +23,7 @@ internal class UiBridge : Agent
     {
         if(messageData.TryGet(out ImportantNotice importantNotice))
         {
-            mainWindow.Dispatcher.Invoke(() =>
+            mainWindow!.Dispatcher.Invoke(() =>
             {
                 ((WindowViewModel)mainWindow.DataContext).ImportantNotices.Add(importantNotice.Notice);
             });
@@ -30,9 +31,9 @@ internal class UiBridge : Agent
         }
         if (messageData.TryGet(out DataUpdated updated))
         {
-            mainWindow.Dispatcher.Invoke(() =>
+            mainWindow!.Dispatcher.Invoke(() =>
             {
-                UpdateViewModel(updated.Updates);
+                UpdateViewModel(updated);
             });
             return;
         }
@@ -41,19 +42,15 @@ internal class UiBridge : Agent
         SubscribeToEvents();
     }
 
-    private void UpdateViewModel(DataUpdate[] updatedUpdates)
+    private void UpdateViewModel(DataUpdated updated)
     {
-        WindowViewModel viewModel = (WindowViewModel)mainWindow.DataContext;
-        double bscPrice = 0;
-        double avalanchePrice = 0;
-        Liquidity bscLiquidity = new Liquidity();
-        Liquidity avalancheLiquidity = new Liquidity();
+        DataUpdate[] updatedUpdates = updated.Updates;
+        WindowViewModel viewModel = (WindowViewModel)mainWindow!.DataContext;
         foreach (DataUpdate dataUpdate in updatedUpdates)
         {
             switch (dataUpdate.BlockchainName)
             {
                 case BlockchainName.Bsc:
-                    bscPrice = dataUpdate.UnstablePrice;
                     viewModel.BscStableAmount = dataUpdate.StableAmount;
                     viewModel.BscStableToken = dataUpdate.StableSymbol;
                     viewModel.BscUnstableAmount = dataUpdate.UnstableAmount;
@@ -63,10 +60,8 @@ internal class UiBridge : Agent
                     viewModel.BscNetWorth = dataUpdate.StableAmount + 
                                             dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
                                             dataUpdate.AccountBalance * dataUpdate.NativePrice;
-                    bscLiquidity = dataUpdate.Liquidity;
                     break;
                 case BlockchainName.Avalanche:
-                    avalanchePrice = dataUpdate.UnstablePrice;
                     viewModel.AvalancheStableAmount = dataUpdate.StableAmount;
                     viewModel.AvalancheStableToken = dataUpdate.StableSymbol;
                     viewModel.AvalancheUnstableAmount = dataUpdate.UnstableAmount;
@@ -76,7 +71,6 @@ internal class UiBridge : Agent
                     viewModel.AvalancheNetWorth = dataUpdate.StableAmount +
                                                   dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
                                                   dataUpdate.AccountBalance * dataUpdate.NativePrice;
-                    avalancheLiquidity = dataUpdate.Liquidity;
                     break;
                 default:
                     throw new InvalidOperationException("Not implemented.");
@@ -84,72 +78,20 @@ internal class UiBridge : Agent
         }
 
         viewModel.TotalNetWorth = viewModel.BscNetWorth + viewModel.AvalancheNetWorth;
-        viewModel.Spread = (avalanchePrice - bscPrice) / bscPrice * 100;
-        if (double.IsPositiveInfinity(viewModel.Spread) ||
-            double.IsNegativeInfinity(viewModel.Spread) ||
-            double.IsNaN(viewModel.Spread))
+
+        if (updated.TryGet(out SpreadDataUpdated spreadDataUpdated))
         {
-            return;
+            viewModel.Spread = spreadDataUpdated.Spread*100;
+            viewModel.TargetSpread = spreadDataUpdated.TargetSpread*100;
+            viewModel.MaximumVolumeToTargetSpread = spreadDataUpdated.MaximumVolumeToTargetSpread;
+            viewModel.ProfitByMaximumVolume = spreadDataUpdated.ProfitByMaximumVolume;
         }
-        SpreadProfit optimal = new SpreadProfit();
-        for (double targetSpread = 0; targetSpread < Math.Abs(viewModel.Spread); targetSpread+=0.05)
-        {
-            SpreadProfit profit = CalculateOptimalSpread(bscLiquidity, avalancheLiquidity,
-                                                         viewModel.Spread, targetSpread);
-            if (profit.OptimalProfit > optimal.OptimalProfit)
-            {
-                optimal = profit;
-            }
-        }
-
-        viewModel.TargetSpread = optimal.TargetSpread;
-        viewModel.MaximumVolumeToTargetSpread = optimal.OptimalVolume;
-        viewModel.ProfitByMaximumVolume = optimal.OptimalProfit;
-    }
-
-    private readonly record struct SpreadProfit(double OptimalVolume, double OptimalProfit, double TargetSpread);
-
-    private SpreadProfit CalculateOptimalSpread(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double spread, double targetSpread)
-    {
-        double bscConstant = Math.Sqrt(bscLiquidity.TokenAmount * bscLiquidity.UsdPaired);
-        double avalancheConstant = Math.Sqrt(avalancheLiquidity.TokenAmount * avalancheLiquidity.UsdPaired);
-        double bscChange = (Math.Abs(spread) / 100 - targetSpread / 100) *(avalancheConstant/(avalancheConstant+bscConstant));
-        double maximumVolumeToTargetSpread = CalculateVolumeSpreadOptimum(bscLiquidity, bscChange)*2;
-        double profitByMaximumVolume = SimulateOptimalSellAndBuy(bscLiquidity, avalancheLiquidity, maximumVolumeToTargetSpread/2, spread > 0);
-        return new SpreadProfit(maximumVolumeToTargetSpread, profitByMaximumVolume, targetSpread);
-    }
-
-    private static double SimulateOptimalSellAndBuy(Liquidity bscLiquidity, Liquidity avalancheLiquidity, double volume, bool buyOnBsc)
-    {
-        (double buyTokenAmount, double buyUsdPaired, _, _) = buyOnBsc ? bscLiquidity : avalancheLiquidity;
-        (double sellTokenAmount, double sellUsdPaired, _, _) = buyOnBsc ? avalancheLiquidity : bscLiquidity;
-        double tokenAmount = volume / (buyUsdPaired / buyTokenAmount);
-            
-        //simulate buy
-        double newUsd = buyUsdPaired + volume;
-        double newToken = buyTokenAmount * buyUsdPaired / newUsd;
-        double tokenReceived = buyTokenAmount - newToken;
-            
-        //simulate sell
-        newToken = sellTokenAmount + tokenAmount;
-        newUsd = sellTokenAmount * sellUsdPaired / newToken;
-        double soldValue = sellUsdPaired - newUsd;
-        double boughtValue = tokenReceived * newUsd / newToken;
-
-        return boughtValue + soldValue - volume - tokenAmount * sellUsdPaired / sellTokenAmount;
-    }
-
-    private double CalculateVolumeSpreadOptimum(Liquidity liquidity, double targetSpreadChange)
-    {
-        double constant = liquidity.TokenAmount * liquidity.UsdPaired;
-        double currentPrice = liquidity.UsdPaired / liquidity.TokenAmount;
-        double targetPrice = currentPrice * (1 + targetSpreadChange);
-        return Math.Sqrt(targetPrice * constant) - liquidity.UsdPaired;
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void SubscribeToEvents()
     {
-        mainWindow.Dispatcher.Invoke(() =>
+        mainWindow!.Dispatcher.Invoke(() =>
         {
             WindowViewModel viewModel = new();
             mainWindow.DataContext = viewModel;
@@ -159,12 +101,17 @@ internal class UiBridge : Agent
 
     private void UnsubscribedFromEvents()
     {
-        ((WindowViewModel)mainWindow.DataContext).TransactionInitiated -= OnTransactionInitiated;
+        ((WindowViewModel)mainWindow!.DataContext).TransactionInitiated -= OnTransactionInitiated;
     }
 
     private void OnTransactionInitiated(object? sender, TransactionEventArgs e)
     {
-        OnMessage(new TransactionStarted(mainWindowCreated, (double)e.TransactionAmount / 100, e.Chain, e.Type));
+        OnMessage(new TransactionStarted(mainWindowCreated!,
+                                         e.TransactionAmount != null
+                                             ? (double)e.TransactionAmount / 100
+                                             : null,
+                                         e.Chain,
+                                         e.Type));
     }
 
     protected override void Dispose(bool disposing)

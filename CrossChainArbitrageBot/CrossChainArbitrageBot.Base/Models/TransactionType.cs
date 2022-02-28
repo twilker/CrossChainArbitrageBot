@@ -7,5 +7,8 @@ public enum TransactionType
     BridgeStable,
     BridgeUnstable,
     StableToNative,
-    UnstableToNative
+    UnstableToNative,
+    SynchronizedTrade,
+    SingleLoop,
+    AutoLoop
 }
