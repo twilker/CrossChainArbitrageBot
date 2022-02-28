@@ -19,6 +19,8 @@ public class ArbitrageLoopHandler : Agent
     private readonly double minimalProfit;
     private readonly ConcurrentHashSet<TransactionStarted> waitingTransactions = new();
 
+    private const double MinimalGasPreLoop = 3; 
+
     public ArbitrageLoopHandler(IMessageBoard messageBoard) : base(messageBoard)
     {
         loopState = new InternalLoopState(LoopState.Stopped, LoopKind.None);
@@ -36,19 +38,19 @@ public class ArbitrageLoopHandler : Agent
             bscUpdate = latestData.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
             return;
         }
-        if (messageData.TryGet(out TransactionExecuted executed))
+        if (messageData.TryGet(out TransactionFinished finished))
         {
-            if (!executed.MessageDomain.Root.TryGet(out TransactionStarted started) ||
+            if (!finished.MessageDomain.Root.TryGet(out TransactionStarted started) ||
                 !waitingTransactions.TryRemove(started))
             {
                 return;
             }
 
-            MessageDomain.TerminateDomainsOf(executed);
+            MessageDomain.TerminateDomainsOf(finished);
             if (waitingTransactions.IsEmpty)
             {
-                loopState = loopState.PopAction(out Action? nextAction);
-                nextAction?.Invoke();
+                loopState = loopState.PopAction(out Action<Message>? nextAction);
+                nextAction?.Invoke(messageData);
             }
             return;
         }
@@ -66,9 +68,9 @@ public class ArbitrageLoopHandler : Agent
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.SyncTrade), messageData);
                     SyncTrade(messageData,
-                              () =>
+                              message =>
                               {
-                                  ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
+                                  ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), message);
                               });
                 }
 
@@ -77,7 +79,11 @@ public class ArbitrageLoopHandler : Agent
                 if (CanLoop())
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Single), messageData);
-                    Loop(messageData);
+                    Loop(messageData,
+                         message =>
+                         {
+                             ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), message);
+                         });
                 }
 
                 break;
@@ -99,12 +105,97 @@ public class ArbitrageLoopHandler : Agent
         throw new NotImplementedException();
     }
 
-    private void Loop(Message messageData)
+    private void Loop(Message messageData, Action<Message> nextAction)
     {
-        throw new NotImplementedException();
+        PrepareLoop(messageData, nextAction);
+
+        BlockchainName buySide = BuySide.BlockchainName;
+        BlockchainName sellSide = SellSide.BlockchainName;
+        SyncTrade(messageData, m =>
+        {
+            TransactionStarted[] bridges = {
+                new(m, 1,
+                    buySide,
+                    TransactionType.BridgeUnstable),
+                new(m, 1,
+                    sellSide,
+                    TransactionType.BridgeStable),
+            };
+            
+            loopState = loopState.PushNextAction(nextAction);
+            foreach (TransactionStarted bridge in bridges)
+            {
+                waitingTransactions.Add(bridge);
+            }
+
+            OnMessages(bridges);
+        });
     }
 
-    private void SyncTrade(Message messageData, Action nextAction)
+    private void PrepareLoop(Message messageData, Action<Message> nextAction)
+    {
+        List<TransactionStarted> preparationTransactions = new();
+        if (BuySide.AccountBalance * BuySide.NativePrice < MinimalGasPreLoop)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 0,
+                                                               BuySide.BlockchainName,
+                                                               BuySide.StableAmount >
+                                                               BuySide.UnstableAmount *
+                                                               BuySide.UnstablePrice
+                                                                   ? TransactionType.StableToNative
+                                                                   : TransactionType.UnstableToNative));
+        }
+
+        if (SellSide.AccountBalance * SellSide.NativePrice < MinimalGasPreLoop)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 0,
+                                                               SellSide.BlockchainName,
+                                                               SellSide.StableAmount >
+                                                               SellSide.UnstableAmount *
+                                                               SellSide.UnstablePrice
+                                                                   ? TransactionType.StableToNative
+                                                                   : TransactionType.UnstableToNative));
+        }
+
+        if (preparationTransactions.Any())
+        {
+            SendPreparationTransactions();
+            return;
+        }
+
+        if (BuySide.StableAmount < OptimalVolume)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 1,
+                                                               SellSide.BlockchainName,
+                                                               TransactionType.BridgeStable));
+        }
+
+        if (SellSide.UnstableAmount < OptimalVolume / SellSide.UnstablePrice)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 1,
+                                                               BuySide.BlockchainName,
+                                                               TransactionType.BridgeUnstable));
+        }
+
+        if (preparationTransactions.Any())
+        {
+            SendPreparationTransactions();
+            return;
+        }
+        
+        void SendPreparationTransactions()
+        {
+            loopState = loopState.PushNextAction(m => Loop(m, nextAction));
+            foreach (TransactionStarted preparationTransaction in preparationTransactions)
+            {
+                waitingTransactions.Add(preparationTransaction);
+            }
+
+            OnMessages(preparationTransactions);
+        }
+    }
+
+    private void SyncTrade(Message messageData, Action<Message> nextAction)
     {
         TransactionStarted buy = new(messageData,
                                      OptimalVolume / BuySide.StableAmount,
@@ -114,14 +205,13 @@ public class ArbitrageLoopHandler : Agent
                                       OptimalVolume / SellSide.UnstablePrice / SellSide.UnstableAmount,
                                       SellSide.BlockchainName,
                                       TransactionType.UnstableToStable);
-        MessageDomain.CreateNewDomainsFor(new []{buy, sell});
         waitingTransactions.Add(buy);
         waitingTransactions.Add(sell);
         loopState = loopState.PushNextAction(nextAction);
-        
-        OnMessage(new ImportantNotice(messageData, $""));
-        OnMessage(buy);
-        OnMessage(sell);
+
+        OnMessage(new ImportantNotice(messageData,
+                                      $"Synchronized trade of {OptimalVolume:F2}$. Sell on {SellSide.BlockchainName}. Buy on {BuySide.BlockchainName}"));
+        OnMessages(new []{buy, sell});
     }
 
     private bool CanAutoLoop()
@@ -187,14 +277,14 @@ public class ArbitrageLoopHandler : Agent
         OnMessage(new LoopStateChanged(message, newState.Kind == LoopKind.Auto, newState.State));
     }
 
-    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action? NextAction=null)
+    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message>? NextAction=null)
     {
-        public InternalLoopState PushNextAction(Action nextAction)
+        public InternalLoopState PushNextAction(Action<Message> nextAction)
         {
             return new InternalLoopState(State, Kind, nextAction);
         }
 
-        public InternalLoopState PopAction(out Action? nextAction)
+        public InternalLoopState PopAction(out Action<Message>? nextAction)
         {
             nextAction = NextAction;
             return new InternalLoopState(State, Kind);

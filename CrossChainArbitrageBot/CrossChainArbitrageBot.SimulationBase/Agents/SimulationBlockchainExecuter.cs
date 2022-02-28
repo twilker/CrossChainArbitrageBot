@@ -124,7 +124,7 @@ public class SimulationBlockchainExecuter : Agent
             unstableUpdate.NewBalance < 0)
         {
             OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Stable - {stableUpdate}; Unstable - {unstableUpdate}; Native - {nativeUpdate}"));
-            OnMessage(new TradeCompleted(executing, false));
+            OnMessage(new TransactionExecuted(executing, false));
             return;
         }
         
@@ -133,7 +133,7 @@ public class SimulationBlockchainExecuter : Agent
                       $"Simulated trade completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {received} {(!isStable ? data.StableSymbol : data.UnstableSymbol)}"));
         OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, stableUpdate, unstableUpdate));
         OnMessage(new LiquidityOffsetUpdated(executing, liquidityOffset, data.BlockchainName));
-        OnMessage(new TradeCompleted(executing, true));
+        OnMessage(new TransactionExecuted(executing, true));
     }
 
     private void TradeTokenToNative(TransactionExecuting executing)
@@ -198,7 +198,7 @@ public class SimulationBlockchainExecuter : Agent
             tokenUpdate.NewBalance < 0)
         {
             OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Token - {tokenUpdate}; Native - {nativeUpdate}"));
-            OnMessage(new TradeCompleted(executing, false));
+            OnMessage(new TransactionExecuted(executing, false));
             return;
         }
         
@@ -206,7 +206,7 @@ public class SimulationBlockchainExecuter : Agent
                       executing,
                       $"Simulated trade completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {received} {(data.BlockchainName == BlockchainName.Bsc ? "BNB" : "AVAX")}"));
         OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, tokenUpdate));
-        OnMessage(new TradeCompleted(executing, true));
+        OnMessage(new TransactionExecuted(executing, true));
     }
 
     private void BridgeToken(TransactionExecuting executing)
@@ -270,7 +270,7 @@ public class SimulationBlockchainExecuter : Agent
             targetTokenUpdate.NewBalance < 0)
         {
             OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Source Token - {sourceTokenUpdate}; Native - {nativeUpdate}; Target Token - {targetTokenUpdate}"));
-            OnMessage(new TradeCompleted(executing, false));
+            OnMessage(new TransactionExecuted(executing, false));
             return;
         }
 
@@ -286,7 +286,7 @@ public class SimulationBlockchainExecuter : Agent
                       executing,
                       $"Simulated bridge completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {data.BlockchainName}"));
         OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, sourceTokenUpdate, targetTokenUpdate));
-        OnMessage(new TradeCompleted(executing, true));
+        OnMessage(new TransactionExecuted(executing, true));
     }
 
     protected override void ExecuteCore(Message messageData)

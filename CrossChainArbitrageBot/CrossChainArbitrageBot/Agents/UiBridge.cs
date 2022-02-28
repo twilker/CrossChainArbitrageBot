@@ -10,6 +10,7 @@ namespace CrossChainArbitrageBot.Agents;
 [Consumes(typeof(MainWindowCreated))]
 [Consumes(typeof(DataUpdated))]
 [Consumes(typeof(ImportantNotice))]
+[Consumes(typeof(LoopStateChanged))]
 internal class UiBridge : Agent
 {
     private MainWindow? mainWindow;
@@ -26,6 +27,15 @@ internal class UiBridge : Agent
             mainWindow!.Dispatcher.Invoke(() =>
             {
                 ((WindowViewModel)mainWindow.DataContext).ImportantNotices.Add(importantNotice.Notice);
+            });
+            return;
+        }
+        if(messageData.TryGet(out LoopStateChanged loopState))
+        {
+            mainWindow!.Dispatcher.Invoke(() =>
+            {
+                ((WindowViewModel)mainWindow.DataContext).LoopState = loopState.State;
+                ((WindowViewModel)mainWindow.DataContext).IsLoopOnAuto = loopState.IsAutoLoop;
             });
             return;
         }

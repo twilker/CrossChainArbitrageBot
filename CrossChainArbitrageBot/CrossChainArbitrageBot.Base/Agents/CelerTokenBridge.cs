@@ -78,7 +78,8 @@ public class CelerTokenBridge : Agent
                                            BlockchainName.Bsc => BlockchainName.Avalanche,
                                            BlockchainName.Avalanche => BlockchainName.Bsc,
                                            _ => throw new InvalidOperationException("Not implemented.")
-                                       }, bridging.BridgedSourceToken));
+                                       }, bridging.BridgedSourceToken,
+                          bridging.TokenType));
         }
     }
 

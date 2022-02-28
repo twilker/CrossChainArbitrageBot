@@ -31,10 +31,11 @@ public class TokenBridging : Message
     public string TargetWallet { get; }
     public int Decimals { get; }
     public string BridgedSourceToken { get; }
+    public TokenType TokenType { get; set; }
 
     protected override string DataToString()
     {
         return $"{nameof(SourceChain)}: {SourceChain}; {nameof(Amount)}: {Amount}; {nameof(OriginalTargetAmount)}: {OriginalTargetAmount}; {nameof(BridgedSourceToken)}: {BridgedSourceToken}," +
-               $"{nameof(TargetWallet)}: {TargetWallet}, {nameof(Decimals)}: {Decimals}";
+               $"{nameof(TargetWallet)}: {TargetWallet}, {nameof(Decimals)}: {Decimals}; {nameof(TokenType)}: {TokenType}";
     }
 }

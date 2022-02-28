@@ -35,7 +35,11 @@ internal class PancakeSwapTrader : Agent
                  trade.Platform == TradingPlatform.PancakeSwap)
         {
             MessageDomain.TerminateDomainsOf(messageData);
-            OnMessage(new TradeCompleted(messageData, executed.Success));
+            OnMessage(new TradeCompleted(messageData, executed.Success,
+                          BlockchainName.Bsc,
+                          trade.OriginalTargetAmount,
+                          trade.ExpectedAmount,
+                          trade.TokenType));
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using System.Configuration;
 using Agents.Net;
+using ConcurrentCollections;
 using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
 
@@ -65,7 +66,11 @@ internal class TransactionGateway : Agent
                                               lastUpdate.StableAmount * set.Message2.TransactionAmount,
                                               TradingPlatform.TraderJoe, lastUpdate.StableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.UnstableAmount,
+                                              lastUpdate.StableAmount * set.Message2.TransactionAmount /
+                                              lastUpdate.UnstablePrice,
+                                              TokenType.Unstable));
                 break;
             case TransactionType.UnstableToStable:
                 OnMessage(new ImportantNotice(
@@ -75,7 +80,11 @@ internal class TransactionGateway : Agent
                                               lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
                                               TradingPlatform.TraderJoe, lastUpdate.UnstableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.StableAmount,
+                                              lastUpdate.UnstableAmount * set.Message2.TransactionAmount *
+                                              lastUpdate.UnstablePrice,
+                                              TokenType.Stable));
                 break;
             case TransactionType.BridgeStable:
                 DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
@@ -108,7 +117,11 @@ internal class TransactionGateway : Agent
                                               Math.Min(10, lastUpdate.StableAmount),
                                               TradingPlatform.TraderJoe, lastUpdate.StableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.AccountBalance,
+                                              Math.Min(10, lastUpdate.StableAmount) /
+                                              lastUpdate.NativePrice,
+                                              TokenType.Native));
                 break;
             case TransactionType.UnstableToNative:
                 double unstableAmount = 10 / lastUpdate.UnstablePrice;
@@ -121,7 +134,11 @@ internal class TransactionGateway : Agent
                                               Math.Min(unstableAmount, lastUpdate.UnstableAmount),
                                               TradingPlatform.TraderJoe, lastUpdate.UnstableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.AccountBalance,
+                                              Math.Min(unstableAmount, lastUpdate.UnstableAmount)*lastUpdate.UnstablePrice /
+                                              lastUpdate.NativePrice,
+                                              TokenType.Native));
                 break;
             default:
                 throw new InvalidOperationException("Not Implemented.");
@@ -141,7 +158,11 @@ internal class TransactionGateway : Agent
                                               lastUpdate.StableAmount * set.Message2.TransactionAmount,
                                               TradingPlatform.PancakeSwap, lastUpdate.StableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.UnstableAmount,
+                                              lastUpdate.StableAmount * set.Message2.TransactionAmount /
+                                              lastUpdate.UnstablePrice,
+                                              TokenType.Unstable));
                 break;
             case TransactionType.UnstableToStable:
                 OnMessage(new ImportantNotice(
@@ -151,7 +172,11 @@ internal class TransactionGateway : Agent
                                               lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
                                               TradingPlatform.PancakeSwap, lastUpdate.UnstableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.StableAmount,
+                                              lastUpdate.UnstableAmount * set.Message2.TransactionAmount *
+                                              lastUpdate.UnstablePrice,
+                                              TokenType.Stable));
                 break;
             case TransactionType.BridgeStable:
                 DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
@@ -183,7 +208,11 @@ internal class TransactionGateway : Agent
                                               Math.Min(10, lastUpdate.StableAmount),
                                               TradingPlatform.PancakeSwap, lastUpdate.StableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.AccountBalance,
+                                              Math.Min(10, lastUpdate.StableAmount) /
+                                              lastUpdate.NativePrice,
+                                              TokenType.Native));
                 break;
             case TransactionType.UnstableToNative:
                 double unstableAmount = 10 / lastUpdate.UnstablePrice;
@@ -194,7 +223,11 @@ internal class TransactionGateway : Agent
                                               Math.Min(unstableAmount, lastUpdate.UnstableAmount),
                                               TradingPlatform.PancakeSwap, lastUpdate.UnstableDecimals,
                                               lastUpdate.WalletAddress,
-                                              lastUpdate.Liquidity));
+                                              lastUpdate.Liquidity,
+                                              lastUpdate.AccountBalance,
+                                              Math.Min(unstableAmount, lastUpdate.UnstableAmount)*lastUpdate.UnstablePrice /
+                                              lastUpdate.NativePrice,
+                                              TokenType.Native));
                 break;
             default:
                 throw new InvalidOperationException("Not Implemented.");
@@ -226,42 +259,75 @@ internal class TransactionGateway : Agent
         };
     }
 
-    public record AwaitingBridgeAmount(BlockchainName TargetChain, double OriginalAmount, double SendAmount, Message OriginalMessage);
-    private AwaitingBridgeAmount? awaitingBridgeAmount;
+    private readonly record struct AwaitingAmount(BlockchainName BlockchainName, double OriginalAmount, double ExpectedAmount, Message CompletedMessage, TokenType TokenType);
 
-    protected override async void ExecuteCore(Message messageData)
+    private readonly ConcurrentHashSet<AwaitingAmount> awaitingAmounts = new();
+
+    protected override void ExecuteCore(Message messageData)
     {
         if(messageData.TryGet(out TradeCompleted tradeCompleted))
         {
-            OnMessage(new TransactionFinished(messageData, tradeCompleted.Success 
-                                                               ? TransactionResult.Success 
-                                                               : TransactionResult.Failed));
+            ProcessTradeCompleted();
             return;
         }
 
         if(messageData.TryGet(out TokenBridged tokenBridged))
         {
+            ProcessTokenBridged();
+            return;
+        }
+
+        if(messageData.TryGet(out DataUpdated dataUpdated))
+        {
+            ProcessDataUpdate();
+        }
+        collector.Push(messageData);
+
+        void ProcessDataUpdate()
+        {
+            foreach (AwaitingAmount awaitingAmount in awaitingAmounts)
+            {
+                DataUpdate update = dataUpdated.Updates.First(u => u.BlockchainName == awaitingAmount.BlockchainName);
+                double amount = awaitingAmount.TokenType switch
+                {
+                    TokenType.Stable => update.StableAmount,
+                    TokenType.Unstable => update.UnstableAmount,
+                    TokenType.Native => update.AccountBalance,
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+                if (amount > awaitingAmount.OriginalAmount + awaitingAmount.ExpectedAmount * 0.5 &&
+                    awaitingAmounts.TryRemove(awaitingAmount))
+                {
+                    OnMessage(new TransactionFinished(awaitingAmount.CompletedMessage, TransactionResult.Success));
+                }
+                //TODO timeout
+            }
+        }
+
+        void ProcessTokenBridged()
+        {
             if (tokenBridged.Success)
             {
-                awaitingBridgeAmount = new AwaitingBridgeAmount(tokenBridged.TargetChain, tokenBridged.OriginalTargetAmount,
-                                                                tokenBridged.AmountSend, tokenBridged);
+                awaitingAmounts.Add(new AwaitingAmount(tokenBridged.TargetChain, tokenBridged.OriginalTargetAmount,
+                                                       tokenBridged.AmountSend, tokenBridged, tokenBridged.TokenType));
             }
             else
             {
                 OnMessage(new TransactionFinished(messageData, TransactionResult.Failed));
             }
-            return;
         }
 
-        if(messageData.TryGet(out DataUpdated dataUpdated) && 
-           awaitingBridgeAmount != null &&
-           dataUpdated.Updates.First(u => u.BlockchainName == awaitingBridgeAmount.TargetChain)
-                      .StableAmount >= awaitingBridgeAmount.OriginalAmount+awaitingBridgeAmount.SendAmount*0.5)
+        void ProcessTradeCompleted()
         {
-            //TODO potential double execution here
-            OnMessage(new TransactionFinished(awaitingBridgeAmount.OriginalMessage, TransactionResult.Success));
-            awaitingBridgeAmount = null;
+            if (tradeCompleted.Success)
+            {
+                awaitingAmounts.Add(new AwaitingAmount(tradeCompleted.BlockchainName, tradeCompleted.OriginalAmount,
+                                                       tradeCompleted.AmountExpected, tradeCompleted, tradeCompleted.TokenType));
+            }
+            else
+            {
+                OnMessage(new TransactionFinished(messageData, TransactionResult.Failed));
+            }
         }
-        collector.Push(messageData);
     }
 }

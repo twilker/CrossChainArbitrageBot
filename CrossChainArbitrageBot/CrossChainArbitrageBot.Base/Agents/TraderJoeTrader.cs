@@ -35,7 +35,11 @@ public class TraderJoeTrader : Agent
                  trade.Platform == TradingPlatform.TraderJoe)
         {
             MessageDomain.TerminateDomainsOf(messageData);
-            OnMessage(new TradeCompleted(messageData, executed.Success));
+            OnMessage(new TradeCompleted(messageData, executed.Success,
+                                         BlockchainName.Avalanche,
+                                         trade.OriginalTargetAmount,
+                                         trade.ExpectedAmount,
+                                         trade.TokenType));
         }
     }
 
