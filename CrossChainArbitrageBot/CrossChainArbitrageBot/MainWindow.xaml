@@ -45,10 +45,11 @@
                    HorizontalAlignment="Center"
                    Margin="0,0,0,10">
             <TextBlock.Text>
-                <MultiBinding StringFormat="{}Optimal Target Spread: {0:F2}% - Maximum Volume: {1:F2}$ - Profit by Maximum Volume: {2:F2}$">
-                    <Binding Path="TargetSpread"/>
-                    <Binding Path="MaximumVolumeToTargetSpread"/>
-                    <Binding Path="ProfitByMaximumVolume"/>
+                <MultiBinding StringFormat="{}Minimal Spread: {0:F2}% - Target Token Amount: {1:F2} ({2:F2}$) - Current Profit: {3:F2}$">
+                    <Binding Path="MinimalSpread"/>
+                    <Binding Path="OptimalTokenAmount"/>
+                    <Binding Path="OptimalTokenAmountPrice"/>
+                    <Binding Path="CurrentProfit"/>
                 </MultiBinding>
             </TextBlock.Text>
         </TextBlock>

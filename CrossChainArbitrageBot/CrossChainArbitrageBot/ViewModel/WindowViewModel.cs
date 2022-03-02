@@ -11,9 +11,9 @@ namespace CrossChainArbitrageBot.ViewModel;
 public class WindowViewModel : INotifyPropertyChanged
 {
     private double spread;
-    private double targetSpread;
-    private double maximumVolumeToTargetSpread;
-    private double profitByMaximumVolume;
+    private double minimalSpread;
+    private double optimalTokenAmount;
+    private double currentProfit;
     private double bscUnstableAmount;
     private double bscStableAmount;
     private double bscUnstablePrice;
@@ -32,6 +32,7 @@ public class WindowViewModel : INotifyPropertyChanged
     private double totalNetWorth;
     private bool isLoopOnAuto;
     private LoopState loopState;
+    private double optimalTokenAmountPrice;
 
     public double Spread
     {
@@ -44,35 +45,46 @@ public class WindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public double TargetSpread
+    public double MinimalSpread
     {
-        get => targetSpread;
+        get => minimalSpread;
         set
         {
-            if (value.Equals(targetSpread)) return;
-            targetSpread = value;
+            if (value.Equals(minimalSpread)) return;
+            minimalSpread = value;
             OnPropertyChanged();
         }
     }
 
-    public double MaximumVolumeToTargetSpread
+    public double OptimalTokenAmount
     {
-        get => maximumVolumeToTargetSpread;
+        get => optimalTokenAmount;
         set
         {
-            if (value.Equals(maximumVolumeToTargetSpread)) return;
-            maximumVolumeToTargetSpread = value;
+            if (value.Equals(optimalTokenAmount)) return;
+            optimalTokenAmount = value;
             OnPropertyChanged();
         }
     }
-    
-    public double ProfitByMaximumVolume
+
+    public double OptimalTokenAmountPrice
     {
-        get => profitByMaximumVolume;
+        get => optimalTokenAmountPrice;
         set
         {
-            if (value.Equals(profitByMaximumVolume)) return;
-            profitByMaximumVolume = value;
+            if (value.Equals(optimalTokenAmountPrice)) return;
+            optimalTokenAmountPrice = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double CurrentProfit
+    {
+        get => currentProfit;
+        set
+        {
+            if (value.Equals(currentProfit)) return;
+            currentProfit = value;
             OnPropertyChanged();
         }
     }

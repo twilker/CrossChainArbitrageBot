@@ -18,6 +18,8 @@ public class ArbitrageLoopHandler : Agent
     private InternalLoopState loopState;
     private readonly double minimalProfit;
     private readonly ConcurrentHashSet<TransactionStarted> waitingTransactions = new();
+    private readonly double liquidityProviderFee;
+    private readonly double bridgeFee;
 
     private const double MinimalGasPreLoop = 3; 
 
@@ -26,6 +28,10 @@ public class ArbitrageLoopHandler : Agent
         loopState = new InternalLoopState(LoopState.Stopped, LoopKind.None);
         minimalProfit = double.Parse(ConfigurationManager.AppSettings["MinimalProfit"] ??
                                      throw new ConfigurationErrorsException("MinimalProfit not configured."));
+        liquidityProviderFee = double.Parse(ConfigurationManager.AppSettings["LiquidityProviderFee"] ??
+                                            throw new ConfigurationErrorsException("LiquidityProviderFee not found."));
+        bridgeFee = double.Parse(ConfigurationManager.AppSettings["BridgeCostsForProfitCalculation"] ??
+                                 throw new ConfigurationErrorsException("BridgeCostsForProfitCalculation not found."));
     }
 
     protected override void ExecuteCore(Message messageData)
@@ -145,8 +151,7 @@ public class ArbitrageLoopHandler : Agent
         BlockchainName sellSide = SellSide.BlockchainName;
         double totalNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
                                                                     dataUpdate.UnstableAmount *
-                                                                    dataUpdate.UnstablePrice +
-                                                                    dataUpdate.AccountBalance * dataUpdate.NativePrice);
+                                                                    dataUpdate.UnstablePrice);
         SyncTrade(messageData, m =>
         {
             TransactionStarted[] bridges = {
@@ -162,8 +167,7 @@ public class ArbitrageLoopHandler : Agent
             {
                 double afterLoopNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
                                                                              dataUpdate.UnstableAmount *
-                                                                             dataUpdate.UnstablePrice +
-                                                                             dataUpdate.AccountBalance * dataUpdate.NativePrice);
+                                                                             dataUpdate.UnstablePrice);
                 OnMessage(new ImportantNotice(futureMessage, $"Loop executed successfully. Profit - " +
                                                              $"{afterLoopNetWorth - totalNetWorth:F2}$ - " +
                                                              $"{(afterLoopNetWorth - totalNetWorth) / totalNetWorth * 100:F2}%"));
@@ -210,14 +214,15 @@ public class ArbitrageLoopHandler : Agent
             return;
         }
 
-        if (BuySide.StableAmount < OptimalVolume)
+        if (BuySide.StableAmount < OptimalBuyVolume &&
+            SellSide.StableAmount > bridgeFee * 10)
         {
             preparationTransactions.Add(new TransactionStarted(messageData, 1,
                                                                SellSide.BlockchainName,
                                                                TransactionType.BridgeStable));
         }
 
-        if (SellSide.UnstableAmount < OptimalVolume / SellSide.UnstablePrice)
+        if (BuySide.UnstableAmount * BuySide.UnstablePrice > bridgeFee*10)
         {
             preparationTransactions.Add(new TransactionStarted(messageData, 1,
                                                                BuySide.BlockchainName,
@@ -245,11 +250,11 @@ public class ArbitrageLoopHandler : Agent
     private void SyncTrade(Message messageData, Action<Message> nextAction)
     {
         TransactionStarted buy = new(messageData,
-                                     OptimalBuyVolume / BuySide.StableAmount,
+                                     BuyVolume / BuySide.StableAmount,
                                      BuySide.BlockchainName,
                                      TransactionType.StableToUnstable);
         TransactionStarted sell = new(messageData,
-                                      OptimalSellVolume / SellSide.UnstablePrice / SellSide.UnstableAmount,
+                                      1,
                                       SellSide.BlockchainName,
                                       TransactionType.UnstableToStable);
         waitingTransactions.Add(buy);
@@ -257,7 +262,9 @@ public class ArbitrageLoopHandler : Agent
         loopState = loopState.PushNextAction(nextAction);
 
         OnMessage(new ImportantNotice(messageData,
-                                      $"Synchronized trade of {OptimalVolume:F2}$. Sell on {SellSide.BlockchainName}. Buy on {BuySide.BlockchainName}"));
+                                      $"Synchronized trade of {BuyVolume:F2} {BuySide.StableSymbol} and " +
+                                      $"{SellSide.UnstableAmount:F2} {SellSide.UnstableSymbol}. " +
+                                      $"Sell on {SellSide.BlockchainName}. Buy on {BuySide.BlockchainName}"));
         OnMessages(new []{buy, sell});
     }
 
@@ -293,52 +300,19 @@ public class ArbitrageLoopHandler : Agent
 
     private bool MinimalProfitPossible()
     {
-        return OptimalVolume.CalculateProfit(bscUpdate!.Value.Liquidity,
-                                             avalancheUpdate!.Value.Liquidity,
-                                             BuySide.BlockchainName == BlockchainName.Bsc)
-               >= minimalProfit;
+        return latestSpreadData!.CurrentProfit >= minimalProfit;
     }
 
-    private double OptimalVolume
-    {
-        get
-        {
-            double stableValue = latestData!.Updates.Max(u => u.StableAmount);
-            double unstableValue = latestData!.Updates.Max(u => u.UnstableAmount * SellSide.UnstablePrice);
-            double volume = new[] { stableValue, unstableValue, latestSpreadData!.MaximumVolumeToTargetSpread / 2 }.Min();
-            return volume;
-        }
-    }
+    private double BuyVolume => Math.Min(OptimalBuyVolume, BuySide.StableAmount);
 
     private double OptimalBuyVolume
     {
         get
         {
-            if (OptimalVolume - latestSpreadData!.MaximumVolumeToTargetSpread / 2 < 0.1)
-            {
-                //more net worth than optimal volume -> reduce buy volume to sync wallet worths
-                double expectedTargetPrice = Math.Pow(SellSide.Liquidity.UsdPaired + OptimalVolume, 2) /
-                                             SellSide.Liquidity.Constant;
-                double targetAmount = OptimalVolume / expectedTargetPrice;
-                double buyAmount = BuySide.Liquidity.UsdPaired -
-                                   BuySide.Liquidity.Constant / (BuySide.Liquidity.TokenAmount + targetAmount);
-                return Math.Min(buyAmount, OptimalVolume);
-            }
-            else
-            {
-                //less net worth than volume -> OptimalSellVolume syncs net worth between chains
-                return OptimalVolume;
-            }
-        }
-    }
-
-    private double OptimalSellVolume
-    {
-        get
-        {
-            double unstableValue = latestData!.Updates.Max(u => u.UnstableAmount * SellSide.UnstablePrice);
-            double volume = new[] { unstableValue, latestSpreadData!.MaximumVolumeToTargetSpread / 2 }.Min();
-            return volume;
+            double buyVolume =
+                BuySide.Liquidity.Constant / (BuySide.Liquidity.TokenAmount - latestSpreadData!.OptimalTokenAmount) -
+                BuySide.Liquidity.UsdPaired;
+            return buyVolume;
         }
     }
 

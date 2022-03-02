@@ -4,29 +4,29 @@ namespace CrossChainArbitrageBot.Base.Messages;
 
 public class SpreadDataUpdated : MessageDecorator
 {
-    private SpreadDataUpdated(Message decoratedMessage, double spread, double targetSpread, double maximumVolumeToTargetSpread, double profitByMaximumVolume, IEnumerable<Message>? additionalPredecessors = null) : base(decoratedMessage, additionalPredecessors)
+    private SpreadDataUpdated(Message decoratedMessage, double spread, double minimalSpread, double optimalTokenAmount, double currentProfit, IEnumerable<Message>? additionalPredecessors = null) : base(decoratedMessage, additionalPredecessors)
     {
         Spread = spread;
-        TargetSpread = targetSpread;
-        MaximumVolumeToTargetSpread = maximumVolumeToTargetSpread;
-        ProfitByMaximumVolume = profitByMaximumVolume;
+        MinimalSpread = minimalSpread;
+        OptimalTokenAmount = optimalTokenAmount;
+        CurrentProfit = currentProfit;
     }
 
-    public static SpreadDataUpdated Decorate(DataUpdated dataUpdated, double spread, double targetSpread,
-                                             double maximumVolumeToTargetSpread, double profitByMaximumVolume,
+    public static SpreadDataUpdated Decorate(DataUpdated dataUpdated, double spread, double minimalSpread,
+                                             double optimalTokenAmount, double currentProfit,
                                              IEnumerable<Message>? additionalPredecessors = null)
     {
-        return new SpreadDataUpdated(dataUpdated, spread, targetSpread, maximumVolumeToTargetSpread,
-                                     profitByMaximumVolume, additionalPredecessors);
+        return new SpreadDataUpdated(dataUpdated, spread, minimalSpread, optimalTokenAmount,
+                                     currentProfit, additionalPredecessors);
     }
-    
+
     public double Spread { get; }
-    public double TargetSpread { get; }
-    public double MaximumVolumeToTargetSpread { get; }
-    public double ProfitByMaximumVolume { get; }
+    public double MinimalSpread { get; }
+    public double OptimalTokenAmount { get; }
+    public double CurrentProfit { get; }
 
     protected override string DataToString()
     {
-        return $"{nameof(Spread)}: {Spread}, {nameof(TargetSpread)}: {TargetSpread}, {nameof(MaximumVolumeToTargetSpread)}: {MaximumVolumeToTargetSpread}, {nameof(ProfitByMaximumVolume)}: {ProfitByMaximumVolume}";
+        return $"{nameof(Spread)}: {Spread}, {nameof(MinimalSpread)}: {MinimalSpread}, {nameof(OptimalTokenAmount)}: {OptimalTokenAmount}, {nameof(CurrentProfit)}: {CurrentProfit}";
     }
 }

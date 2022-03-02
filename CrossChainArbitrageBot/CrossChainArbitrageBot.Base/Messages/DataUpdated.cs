@@ -33,4 +33,5 @@ public readonly record struct Liquidity(double TokenAmount, double UsdPaired, st
                                         string UnstableTokenId)
 {
     public double Constant => TokenAmount * UsdPaired;
+    public double Price => UsdPaired / TokenAmount;
 };

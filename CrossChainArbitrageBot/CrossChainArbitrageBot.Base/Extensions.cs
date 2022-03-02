@@ -19,24 +19,48 @@ public static class Extensions
 
         return Math.Floor(amount * Math.Pow(10, i-1)) / Math.Pow(10, i-1);
     }
-    
-    public static double CalculateProfit(this double volume, Liquidity bscLiquidity, Liquidity avalancheLiquidity, bool buyOnBsc)
+
+    public static double CalculateActualProfit(this double buyVolume, double sellAmount, Liquidity buyLiquidity,
+                                               Liquidity sellLiquidity,
+                                               double liquidityProviderFee, double bridgeFee)
     {
-        (double buyTokenAmount, double buyUsdPaired, _, _) = buyOnBsc ? bscLiquidity : avalancheLiquidity;
-        (double sellTokenAmount, double sellUsdPaired, _, _) = buyOnBsc ? avalancheLiquidity : bscLiquidity;
-        double tokenAmount = volume / (buyUsdPaired / buyTokenAmount);
+        (double buyTokenAmount, double buyUsdPaired, _, _) = buyLiquidity;
+        (double sellTokenAmount, double sellUsdPaired, _, _) = sellLiquidity;
             
         //simulate buy
-        double newUsd = buyUsdPaired + volume;
+        double newUsd = buyUsdPaired + buyVolume*(1-liquidityProviderFee);
         double newToken = buyTokenAmount * buyUsdPaired / newUsd;
         double tokenReceived = buyTokenAmount - newToken;
+        tokenReceived -= bridgeFee/(newUsd/newToken);
+            
+        //simulate sell
+        newToken = sellTokenAmount + sellAmount;
+        newUsd = sellTokenAmount * sellUsdPaired / newToken;
+        double soldValue = sellUsdPaired - newUsd - bridgeFee;
+        double boughtValue = tokenReceived * newUsd / newToken;
+
+        return boughtValue + soldValue - buyVolume - sellAmount * sellLiquidity.Price;
+    }
+    
+    public static double CalculateProfit(this double volume, Liquidity buyLiquidity, Liquidity sellLiquidity, 
+                                         double liquidityProviderFee, double bridgeFee)
+    {
+        (double buyTokenAmount, double buyUsdPaired, _, _) = buyLiquidity;
+        (double sellTokenAmount, double sellUsdPaired, _, _) = sellLiquidity;
+        double tokenAmount = volume*(1-liquidityProviderFee) / (sellUsdPaired / sellTokenAmount);
+            
+        //simulate buy
+        double newUsd = buyUsdPaired + volume*(1-liquidityProviderFee);
+        double newToken = buyTokenAmount * buyUsdPaired / newUsd;
+        double tokenReceived = buyTokenAmount - newToken;
+        tokenReceived -= bridgeFee/(newUsd/newToken);
             
         //simulate sell
         newToken = sellTokenAmount + tokenAmount;
         newUsd = sellTokenAmount * sellUsdPaired / newToken;
-        double soldValue = sellUsdPaired - newUsd;
+        double soldValue = sellUsdPaired - newUsd - bridgeFee;
         double boughtValue = tokenReceived * newUsd / newToken;
 
-        return boughtValue + soldValue - volume - tokenAmount * sellUsdPaired / sellTokenAmount;
+        return boughtValue + soldValue - volume*2;
     }
 }

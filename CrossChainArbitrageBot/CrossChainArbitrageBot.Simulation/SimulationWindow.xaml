@@ -82,7 +82,7 @@
                     Orientation="Vertical"
                     HorizontalAlignment="Stretch"
                     Margin="0,0,10,5">
-            <TextBox Text="{Binding Chain1UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"
+            <TextBox Text="{Binding Chain1UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F4}"
                      HorizontalAlignment="Stretch"
                      Margin="0,0,0,5">
                 <TextBox.InputBindings>
@@ -90,7 +90,7 @@
                     <KeyBinding Key="Return" Command="{Binding Chain1UnstablePriceOverride}"/>
                 </TextBox.InputBindings>
             </TextBox>
-            <TextBlock Text="{Binding Chain1UnstablePrice, StringFormat={}{0:F2}$}"
+            <TextBlock Text="{Binding Chain1UnstablePrice, StringFormat={}{0:F4}$}"
                        HorizontalAlignment="Left"/>
         </StackPanel>
         
@@ -150,7 +150,7 @@
                     Orientation="Vertical"
                     HorizontalAlignment="Stretch"
                     Margin="0,0,10,5">
-            <TextBox Text="{Binding Chain2UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"
+            <TextBox Text="{Binding Chain2UnstablePriceOverrideValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F4}"
                      HorizontalAlignment="Stretch"
                      Margin="0,0,0,5">
                 <TextBox.InputBindings>
@@ -158,7 +158,7 @@
                     <KeyBinding Key="Return" Command="{Binding Chain2UnstablePriceOverride}"/>
                 </TextBox.InputBindings>
             </TextBox>
-            <TextBlock Text="{Binding Chain2UnstablePrice, StringFormat={}{0:F2}$}"
+            <TextBlock Text="{Binding Chain2UnstablePrice, StringFormat={}{0:F4}$}"
                        HorizontalAlignment="Left"/>
         </StackPanel>
     </Grid>

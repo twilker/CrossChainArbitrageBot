@@ -31,6 +31,7 @@ public class SimulationBlockchainExecuter : Agent
     private readonly string traderJoeRouterAddress;
     private readonly string bscCelerBridgeAddress;
     private readonly string avalancheCelerBridgeAddress;
+    private readonly double liquidityProviderFee;
 
     private DataUpdated? latestUpdate;
 
@@ -40,6 +41,7 @@ public class SimulationBlockchainExecuter : Agent
         traderJoeRouterAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"] ?? throw new ConfigurationErrorsException("TraderJoeRouterAddress not configured.");
         bscCelerBridgeAddress = ConfigurationManager.AppSettings["BscCelerBridgeAddress"] ?? throw new ConfigurationErrorsException("BscCelerBridgeAddress not configured.");
         avalancheCelerBridgeAddress = ConfigurationManager.AppSettings["AvalancheCelerBridgeAddress"] ?? throw new ConfigurationErrorsException("AvalancheCelerBridgeAddress not configured.");
+        liquidityProviderFee = double.Parse(ConfigurationManager.AppSettings["LiquidityProviderFee"] ?? throw new ConfigurationErrorsException("LiquidityProviderFee not found."));
 
         NameValueCollection simulationConfiguration = ConfigurationManager.GetSection("SimulationConfiguration") as NameValueCollection ?? throw new ConfigurationErrorsException("SimulationConfiguration not found.");
         bscTradeDuration = int.Parse(simulationConfiguration["BscTradeDuration"] ?? throw new ConfigurationErrorsException("BscTradeDuration not found."));
@@ -96,7 +98,7 @@ public class SimulationBlockchainExecuter : Agent
         {
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[0], data.StableDecimals);
             received = data.Liquidity.TokenAmount- data.Liquidity.TokenAmount * data.Liquidity.UsdPaired /
-                                    (data.Liquidity.UsdPaired + amount);
+                                    (data.Liquidity.UsdPaired + amount*(1-liquidityProviderFee));
             stableUpdate = new(data.BlockchainName,
                                TokenType.Stable,
                                data.StableAmount - amount);
@@ -109,7 +111,7 @@ public class SimulationBlockchainExecuter : Agent
         {
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[0], data.UnstableDecimals);
             received = data.Liquidity.UsdPaired - data.Liquidity.TokenAmount * data.Liquidity.UsdPaired /
-                                 (data.Liquidity.TokenAmount + amount);
+                                 (data.Liquidity.TokenAmount + amount*(1-liquidityProviderFee));
             unstableUpdate = new(data.BlockchainName,
                                TokenType.Unstable,
                                data.UnstableAmount - amount);
@@ -174,7 +176,7 @@ public class SimulationBlockchainExecuter : Agent
         if (isStable)
         {
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[0], data.StableDecimals);
-            received = amount / data.NativePrice;
+            received = amount*(1-liquidityProviderFee) / data.NativePrice;
             tokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                   TokenType.Stable,
                                                   data.StableAmount - amount);
@@ -185,7 +187,7 @@ public class SimulationBlockchainExecuter : Agent
         else
         {
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[0], data.UnstableDecimals);
-            received = amount * data.UnstablePrice / data.NativePrice;
+            received = amount*(1-liquidityProviderFee) * data.UnstablePrice / data.NativePrice;
             tokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                   TokenType.Unstable,
                                                   data.UnstableAmount - amount);

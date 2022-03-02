@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Agents.Net;
 using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
@@ -27,7 +28,7 @@ internal class UiBridge : Agent
             mainWindow!.Dispatcher.Invoke(() =>
             {
                 ((WindowViewModel)mainWindow.DataContext).ImportantNotices.Add(importantNotice.Notice);
-            });
+            }, DispatcherPriority.Send);
             return;
         }
         if(messageData.TryGet(out LoopStateChanged loopState))
@@ -36,7 +37,7 @@ internal class UiBridge : Agent
             {
                 ((WindowViewModel)mainWindow.DataContext).LoopState = loopState.State;
                 ((WindowViewModel)mainWindow.DataContext).IsLoopOnAuto = loopState.IsAutoLoop;
-            });
+            }, DispatcherPriority.Send);
             return;
         }
         if (messageData.TryGet(out DataUpdated updated))
@@ -44,7 +45,7 @@ internal class UiBridge : Agent
             mainWindow!.Dispatcher.Invoke(() =>
             {
                 UpdateViewModel(updated);
-            });
+            }, DispatcherPriority.Send);
             return;
         }
         mainWindowCreated = messageData.Get<MainWindowCreated>();
@@ -56,6 +57,8 @@ internal class UiBridge : Agent
     {
         DataUpdate[] updatedUpdates = updated.Updates;
         WindowViewModel viewModel = (WindowViewModel)mainWindow!.DataContext;
+        Liquidity bscLiquidity = new Liquidity();
+        Liquidity avalancheLiquidity = new Liquidity();
         foreach (DataUpdate dataUpdate in updatedUpdates)
         {
             switch (dataUpdate.BlockchainName)
@@ -70,6 +73,7 @@ internal class UiBridge : Agent
                     viewModel.BscNetWorth = dataUpdate.StableAmount + 
                                             dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
                                             dataUpdate.AccountBalance * dataUpdate.NativePrice;
+                    bscLiquidity = dataUpdate.Liquidity;
                     break;
                 case BlockchainName.Avalanche:
                     viewModel.AvalancheStableAmount = dataUpdate.StableAmount;
@@ -81,6 +85,7 @@ internal class UiBridge : Agent
                     viewModel.AvalancheNetWorth = dataUpdate.StableAmount +
                                                   dataUpdate.UnstableAmount * dataUpdate.UnstablePrice +
                                                   dataUpdate.AccountBalance * dataUpdate.NativePrice;
+                    avalancheLiquidity = dataUpdate.Liquidity;
                     break;
                 default:
                     throw new InvalidOperationException("Not implemented.");
@@ -91,10 +96,14 @@ internal class UiBridge : Agent
 
         if (updated.TryGet(out SpreadDataUpdated spreadDataUpdated))
         {
+            Liquidity sellLiquidity = spreadDataUpdated.Spread > 0
+                                          ? avalancheLiquidity
+                                          : bscLiquidity;
             viewModel.Spread = spreadDataUpdated.Spread*100;
-            viewModel.TargetSpread = spreadDataUpdated.TargetSpread*100;
-            viewModel.MaximumVolumeToTargetSpread = spreadDataUpdated.MaximumVolumeToTargetSpread;
-            viewModel.ProfitByMaximumVolume = spreadDataUpdated.ProfitByMaximumVolume;
+            viewModel.MinimalSpread = spreadDataUpdated.MinimalSpread*100;
+            viewModel.OptimalTokenAmount = spreadDataUpdated.OptimalTokenAmount;
+            viewModel.OptimalTokenAmountPrice = spreadDataUpdated.OptimalTokenAmount * sellLiquidity.Price;
+            viewModel.CurrentProfit = spreadDataUpdated.CurrentProfit;
         }
         CommandManager.InvalidateRequerySuggested();
     }
