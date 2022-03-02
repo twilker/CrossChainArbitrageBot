@@ -15,5 +15,6 @@ public class BaseModule : Module
         builder.RegisterType<CelerTokenBridge>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<DataCalculationEngine>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<ArbitrageLoopHandler>().As<Agent>().InstancePerLifetimeScope();
+        builder.RegisterType<DataLogger>().As<Agent>().InstancePerLifetimeScope();
     }
 }

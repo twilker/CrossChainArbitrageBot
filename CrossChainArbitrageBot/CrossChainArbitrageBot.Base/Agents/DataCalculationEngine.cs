@@ -32,18 +32,21 @@ public class DataCalculationEngine : InterceptorAgent
         double spread = (avalancheUpdate.UnstablePrice - bscUpdate.UnstablePrice) / bscUpdate.UnstablePrice;
         Liquidity bscLiquidity = bscUpdate.Liquidity;
         Liquidity avalancheLiquidity = avalancheUpdate.Liquidity;
+        Liquidity buyLiquidity = spread > 0
+                                     ? bscLiquidity
+                                     : avalancheLiquidity;
+        Liquidity sellLiquidity = spread > 0
+                                      ? avalancheLiquidity
+                                      : bscLiquidity;
 
         MinimalSpread optimalTokenAmount = TestForOptimalTokenAmount(bscLiquidity, avalancheLiquidity);
-        double optimalBuyVolume = Math.Min(optimalTokenAmount.Profit.OptimalVolume*0.5,
-                                           bscUpdate.StableAmount + avalancheUpdate.StableAmount);
+        double optimalBuyVolume = buyLiquidity.Constant / (buyLiquidity.TokenAmount - optimalTokenAmount.TokenAmount) -
+                                  buyLiquidity.UsdPaired;
+        optimalBuyVolume = Math.Min(optimalBuyVolume, bscUpdate.StableAmount + avalancheUpdate.StableAmount);
         double currentProfit = optimalBuyVolume.CalculateActualProfit(
             bscUpdate.UnstableAmount + avalancheUpdate.UnstableAmount,
-            spread > 0
-                ? bscLiquidity
-                : avalancheLiquidity,
-            spread > 0
-                ? avalancheLiquidity
-                : bscLiquidity,
+            buyLiquidity,
+            sellLiquidity,
             liquidityProviderFee, bridgeFee);
 
         SpreadDataUpdated.Decorate(updated, spread, optimalTokenAmount.Spread, optimalTokenAmount.TokenAmount,

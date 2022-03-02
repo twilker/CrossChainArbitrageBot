@@ -34,7 +34,7 @@ public static class Extensions
         tokenReceived -= bridgeFee/(newUsd/newToken);
             
         //simulate sell
-        newToken = sellTokenAmount + sellAmount;
+        newToken = sellTokenAmount + sellAmount*(1-liquidityProviderFee);
         newUsd = sellTokenAmount * sellUsdPaired / newToken;
         double soldValue = sellUsdPaired - newUsd - bridgeFee;
         double boughtValue = tokenReceived * newUsd / newToken;

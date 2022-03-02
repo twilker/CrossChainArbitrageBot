@@ -145,7 +145,10 @@ public class ArbitrageLoopHandler : Agent
 
     private void Loop(Message messageData, Action<Message> nextAction)
     {
-        PrepareLoop(messageData, nextAction);
+        if (PrepareLoop(messageData, nextAction))
+        {
+            return;
+        }
 
         BlockchainName buySide = BuySide.BlockchainName;
         BlockchainName sellSide = SellSide.BlockchainName;
@@ -171,6 +174,16 @@ public class ArbitrageLoopHandler : Agent
                 OnMessage(new ImportantNotice(futureMessage, $"Loop executed successfully. Profit - " +
                                                              $"{afterLoopNetWorth - totalNetWorth:F2}$ - " +
                                                              $"{(afterLoopNetWorth - totalNetWorth) / totalNetWorth * 100:F2}%"));
+                OnMessage(new LoopCompleted(futureMessage,
+                                            afterLoopNetWorth,
+                                            afterLoopNetWorth +
+                                            latestData!.Updates.Sum(u => u.NativePrice * u.AccountBalance),
+                                            latestData!.Updates.Sum(u => u.StableAmount),
+                                            latestData!.Updates.Sum(u => u.UnstableAmount),
+                                            latestData!.Updates.First(u => u.BlockchainName == BlockchainName.Bsc)
+                                                       .AccountBalance,
+                                            latestData!.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche)
+                                                       .AccountBalance));
                 nextAction(futureMessage);
             });
             foreach (TransactionStarted bridge in bridges)
@@ -182,7 +195,7 @@ public class ArbitrageLoopHandler : Agent
         });
     }
 
-    private void PrepareLoop(Message messageData, Action<Message> nextAction)
+    private bool PrepareLoop(Message messageData, Action<Message> nextAction)
     {
         OnMessage(new ImportantNotice(messageData, "Preparing loop (check native balance + bridge)"));
         List<TransactionStarted> preparationTransactions = new();
@@ -211,7 +224,7 @@ public class ArbitrageLoopHandler : Agent
         if (preparationTransactions.Any())
         {
             SendPreparationTransactions();
-            return;
+            return true;
         }
 
         if (BuySide.StableAmount < OptimalBuyVolume &&
@@ -232,8 +245,10 @@ public class ArbitrageLoopHandler : Agent
         if (preparationTransactions.Any())
         {
             SendPreparationTransactions();
-            return;
+            return true;
         }
+
+        return false;
         
         void SendPreparationTransactions()
         {
