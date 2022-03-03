@@ -1,5 +1,6 @@
 using System.Configuration;
 using System.Numerics;
+using System.Runtime.ExceptionServices;
 using Agents.Net;
 using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
@@ -15,6 +16,8 @@ public class CelerTokenBridge : Agent
 {
     private const string CovalentTransactionApi =
         "https://api.covalenthq.com/v1/{0}/address/{1}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number={2}&page-size={3}&key={4}";
+
+    private long lastKnownNonceValue = 1646285611413;
 
     private readonly Random random = new();
 
@@ -46,7 +49,15 @@ public class CelerTokenBridge : Agent
                 _ => throw new InvalidOperationException("Not implemented.")
             };
 
-            long lastNonce = GetLastUsedNonce(sourceChainId, contractAddress);
+            long lastNonce = lastKnownNonceValue;
+            try
+            {
+                lastNonce = GetLastUsedNonce(sourceChainId, contractAddress);
+            }
+            catch (Exception e)
+            {
+                OnMessage(new ExceptionMessage(ExceptionDispatchInfo.Capture(e), messageData, this));
+            }
             long nextNonce = lastNonce + random.NextInt64(500000, 2000000);
             
             BigInteger amount = Web3.Convert.ToWei(bridging.Amount.RoundedAmount(), bridging.Decimals);
@@ -97,9 +108,15 @@ public class CelerTokenBridge : Agent
             {
                 throw new InvalidOperationException("No Send transaction in the last 500 transaction -> Something is off.");
             }
-            Task<HttpResponseMessage> getCall = client.GetAsync(url);
-            getCall.Wait();
-            if (!getCall.Result.IsSuccessStatusCode)
+
+            Task<HttpResponseMessage>? getCall = null;
+            for (int i = 0; i < 3 && getCall?.Result.IsSuccessStatusCode != true; i++)
+            {
+                getCall = client.GetAsync(url);
+                getCall.Wait();
+                Thread.Sleep(1000);
+            }
+            if (getCall?.Result.IsSuccessStatusCode != true)
             {
                 throw new InvalidOperationException($"Status Code {getCall.Result.StatusCode} does not suggest success.");
             }

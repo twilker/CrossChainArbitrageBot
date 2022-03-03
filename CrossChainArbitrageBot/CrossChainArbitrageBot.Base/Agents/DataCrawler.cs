@@ -125,7 +125,7 @@ internal class DataCrawler : Agent
                 }
                 
                 OnMessage(new DataUpdated(messageData, dataUpdates.ToArray()));
-                Thread.Sleep(1000);
+                Thread.Sleep(2000);
             }
             catch (Exception e)
             {
