@@ -24,6 +24,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
         <TextBlock Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2"
@@ -161,5 +162,19 @@
             <TextBlock Text="{Binding Chain2UnstablePrice, StringFormat={}{0:F4}$}"
                        HorizontalAlignment="Left"/>
         </StackPanel>
+        
+        <TextBlock Grid.Column="0" Grid.Row="10"
+                   Text="Set Number Transactions Until Error"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,10,0"/>
+        <TextBox Grid.Column="1" Grid.Row="10" 
+                 Text="{Binding TransactionsUntilError, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 HorizontalAlignment="Stretch"
+                 Margin="0,0,10,5">
+            <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding SetFailingTransactions}"/>
+                <KeyBinding Key="Return" Command="{Binding SetFailingTransactions}"/>
+            </TextBox.InputBindings>
+        </TextBox>
     </Grid>
 </Window>

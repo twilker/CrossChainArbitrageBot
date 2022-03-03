@@ -35,6 +35,7 @@ public class SimulationWindowViewModel : INotifyPropertyChanged
     private string? chain2NativeSymbol;
     private double chain1UnstablePriceOverrideValue;
     private double chain2UnstablePriceOverrideValue;
+    private int transactionsUntilError;
 
     public double Chain1UnstableAmount
     {
@@ -300,6 +301,17 @@ public class SimulationWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public int TransactionsUntilError
+    {
+        get => transactionsUntilError;
+        set
+        {
+            if (value == transactionsUntilError) return;
+            transactionsUntilError = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand Chain1UnstableAmountOverride { get; }
     public ICommand Chain1UnstablePriceOverride { get; }
     public ICommand Chain1StableAmountOverride { get; }
@@ -308,6 +320,7 @@ public class SimulationWindowViewModel : INotifyPropertyChanged
     public ICommand Chain2UnstablePriceOverride { get; }
     public ICommand Chain2StableAmountOverride { get; }
     public ICommand Chain2NativeAmountOverride { get; }
+    public ICommand SetFailingTransactions { get; }
 
     public SimulationWindowViewModel()
     {
@@ -335,9 +348,11 @@ public class SimulationWindowViewModel : INotifyPropertyChanged
         Chain2NativeAmountOverride = new RelayCommand(
             _ => OnSimulationOverride(new SimulationOverrideEventArgs(SimulationOverrideValueType.Native, Chain2Name!.Value)),
             _ => Chain2Name.HasValue);
+        SetFailingTransactions = new RelayCommand(_ => OnTransactionsUntilErrorChanged());
     }
 
     public event EventHandler<SimulationOverrideEventArgs>? SimulationOverride; 
+    public event EventHandler<EventArgs>? TransactionsUntilErrorChanged; 
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -350,5 +365,10 @@ public class SimulationWindowViewModel : INotifyPropertyChanged
     protected virtual void OnSimulationOverride(SimulationOverrideEventArgs e)
     {
         SimulationOverride?.Invoke(this, e);
+    }
+
+    protected virtual void OnTransactionsUntilErrorChanged()
+    {
+        TransactionsUntilErrorChanged?.Invoke(this, EventArgs.Empty);
     }
 }

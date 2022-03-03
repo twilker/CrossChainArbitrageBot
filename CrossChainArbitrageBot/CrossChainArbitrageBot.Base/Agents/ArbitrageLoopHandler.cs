@@ -56,8 +56,8 @@ public class ArbitrageLoopHandler : Agent
             MessageDomain.TerminateDomainsOf(finished);
             if (waitingTransactions.IsEmpty)
             {
-                loopState = loopState.PopAction(out Action<Message>? nextAction);
-                nextAction?.Invoke(messageData);
+                loopState = loopState.PopAction(out Action<Message, bool>? nextAction);
+                nextAction?.Invoke(messageData, finished.Result == TransactionResult.Success);
             }
             return;
         }
@@ -75,7 +75,7 @@ public class ArbitrageLoopHandler : Agent
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.SyncTrade), messageData);
                     SyncTrade(messageData,
-                              message =>
+                              (message, _) =>
                               {
                                   ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), message);
                               });
@@ -87,7 +87,7 @@ public class ArbitrageLoopHandler : Agent
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Single), messageData);
                     Loop(messageData,
-                         message =>
+                         (message, _) =>
                          {
                              ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), message);
                          });
@@ -135,15 +135,23 @@ public class ArbitrageLoopHandler : Agent
         if (MinimalProfitPossible())
         {
             ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Auto), messageData);
-            Loop(messageData, m =>
+            Loop(messageData, (m, success) =>
             {
-                ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
-                CheckIdleAutoLoop(m);
+                if (success)
+                {
+                    ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+                    CheckIdleAutoLoop(m);
+                }
+                else
+                {
+                    ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
+                    //TODO important message with info from domain root started message + Telegram (based on important message?)
+                }
             });
         }
     }
 
-    private void Loop(Message messageData, Action<Message> nextAction)
+    private void Loop(Message messageData, Action<Message, bool> nextAction)
     {
         if (PrepareLoop(messageData, nextAction))
         {
@@ -155,8 +163,12 @@ public class ArbitrageLoopHandler : Agent
         double totalNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
                                                                     dataUpdate.UnstableAmount *
                                                                     dataUpdate.UnstablePrice);
-        SyncTrade(messageData, m =>
+        SyncTrade(messageData, (m, result) =>
         {
+            if (!result)
+            {
+                nextAction(m, result);
+            }
             TransactionStarted[] bridges = {
                 new(m, 1,
                     buySide,
@@ -166,8 +178,13 @@ public class ArbitrageLoopHandler : Agent
                     TransactionType.BridgeStable),
             };
             
-            loopState = loopState.PushNextAction(futureMessage =>
+            loopState = loopState.PushNextAction((futureMessage, success) =>
             {
+                if (!success)
+                {
+                    nextAction(m, success);
+                    return;
+                }
                 double afterLoopNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
                                                                              dataUpdate.UnstableAmount *
                                                                              dataUpdate.UnstablePrice);
@@ -184,7 +201,7 @@ public class ArbitrageLoopHandler : Agent
                                                        .AccountBalance,
                                             latestData!.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche)
                                                        .AccountBalance));
-                nextAction(futureMessage);
+                nextAction(futureMessage, true);
             });
             foreach (TransactionStarted bridge in bridges)
             {
@@ -195,7 +212,7 @@ public class ArbitrageLoopHandler : Agent
         });
     }
 
-    private bool PrepareLoop(Message messageData, Action<Message> nextAction)
+    private bool PrepareLoop(Message messageData, Action<Message, bool> nextAction)
     {
         OnMessage(new ImportantNotice(messageData, "Preparing loop (check native balance + bridge)"));
         List<TransactionStarted> preparationTransactions = new();
@@ -223,7 +240,7 @@ public class ArbitrageLoopHandler : Agent
 
         if (preparationTransactions.Any())
         {
-            SendPreparationTransactions();
+            SendPreparationTransactions(nextAction, preparationTransactions);
             return true;
         }
 
@@ -244,25 +261,35 @@ public class ArbitrageLoopHandler : Agent
 
         if (preparationTransactions.Any())
         {
-            SendPreparationTransactions();
+            SendPreparationTransactions(nextAction, preparationTransactions);
             return true;
         }
 
         return false;
-        
-        void SendPreparationTransactions()
-        {
-            loopState = loopState.PushNextAction(m => Loop(m, nextAction));
-            foreach (TransactionStarted preparationTransaction in preparationTransactions)
-            {
-                waitingTransactions.Add(preparationTransaction);
-            }
-
-            OnMessages(preparationTransactions);
-        }
     }
 
-    private void SyncTrade(Message messageData, Action<Message> nextAction)
+    private void SendPreparationTransactions(Action<Message, bool> nextAction, List<TransactionStarted> preparationTransactions)
+    {
+        loopState = loopState.PushNextAction((m, result) =>
+        {
+            if (result)
+            {
+                Loop(m, nextAction);
+            }
+            else
+            {
+                nextAction(m, result);
+            }
+        });
+        foreach (TransactionStarted preparationTransaction in preparationTransactions)
+        {
+            waitingTransactions.Add(preparationTransaction);
+        }
+
+        OnMessages(preparationTransactions);
+    }
+
+    private void SyncTrade(Message messageData, Action<Message, bool> nextAction)
     {
         TransactionStarted buy = new(messageData,
                                      BuyVolume / BuySide.StableAmount,
@@ -346,14 +373,14 @@ public class ArbitrageLoopHandler : Agent
         OnMessage(new LoopStateChanged(message, newState.Kind == LoopKind.Auto, newState.State));
     }
 
-    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message>? NextAction=null, bool AutoLoopCancelRequested = false)
+    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message, bool>? NextAction=null, bool AutoLoopCancelRequested = false)
     {
-        public InternalLoopState PushNextAction(Action<Message> nextAction)
+        public InternalLoopState PushNextAction(Action<Message, bool> nextAction)
         {
             return new InternalLoopState(State, Kind, nextAction, AutoLoopCancelRequested);
         }
 
-        public InternalLoopState PopAction(out Action<Message>? nextAction)
+        public InternalLoopState PopAction(out Action<Message, bool>? nextAction)
         {
             nextAction = NextAction;
             return new InternalLoopState(State, Kind, AutoLoopCancelRequested:AutoLoopCancelRequested);

@@ -15,6 +15,7 @@ namespace CrossChainArbitrageBot.SimulationBase.Agents;
 
 [Consumes((typeof(TransactionExecuting)))]
 [Consumes((typeof(DataUpdated)))]
+[Consumes((typeof(TransactionsUntilErrorChanged)))]
 public class SimulationBlockchainExecuter : Agent
 {
     private readonly int bscTradeDuration;
@@ -34,6 +35,7 @@ public class SimulationBlockchainExecuter : Agent
     private readonly double liquidityProviderFee;
 
     private DataUpdated? latestUpdate;
+    private int transactionsUntilError = 0;
 
     public SimulationBlockchainExecuter(IMessageBoard messageBoard) : base(messageBoard)
     {
@@ -299,8 +301,31 @@ public class SimulationBlockchainExecuter : Agent
             latestUpdate = updated;
             return;
         }
+        if (messageData.TryGet(out TransactionsUntilErrorChanged untilErrorChanged))
+        {
+            transactionsUntilError = untilErrorChanged.TransactionsUntilError;
+            return;
+        }
 
         TransactionExecuting executing = messageData.Get<TransactionExecuting>();
+        HandleTransaction(executing);
+    }
+
+    private void HandleTransaction(TransactionExecuting executing)
+    {
+        int untilError = Interlocked.Decrement(ref transactionsUntilError);
+        switch (untilError)
+        {
+            case < 0:
+                transactionsUntilError++;
+                break;
+            case 0:
+                OnMessage(new ImportantNotice(executing, "Simulated transaction error."));
+                OnMessage(new TransactionExecuted(executing, false));
+                OnMessage(new TransactionsUntilErrorChanged(executing, 0));
+                return;
+        }
+
         if (executing.ContractAddress.Equals(pancakeSwapRouterAddress, StringComparison.OrdinalIgnoreCase) ||
             executing.ContractAddress.Equals(traderJoeRouterAddress, StringComparison.OrdinalIgnoreCase))
         {
@@ -317,7 +342,7 @@ public class SimulationBlockchainExecuter : Agent
             }
         }
         else if ((executing.ContractAddress.Equals(bscCelerBridgeAddress, StringComparison.OrdinalIgnoreCase) ||
-                 executing.ContractAddress.Equals(avalancheCelerBridgeAddress, StringComparison.OrdinalIgnoreCase)) &&
+                  executing.ContractAddress.Equals(avalancheCelerBridgeAddress, StringComparison.OrdinalIgnoreCase)) &&
                  executing.FunctionName == "send")
         {
             BridgeToken(executing);
