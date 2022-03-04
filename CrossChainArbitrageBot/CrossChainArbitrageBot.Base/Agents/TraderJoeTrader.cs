@@ -51,15 +51,26 @@ public class TraderJoeTrader : Agent
             trade.FromTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase)
                 ? trade.LiquidityPair.PairedTokenId
                 : trade.LiquidityPair.UnstableTokenId;
-        string[] path = trade.ToTokenId.Equals(liquidityGoalAddress, StringComparison.OrdinalIgnoreCase)
-                            ? new[] { trade.FromTokenId, trade.ToTokenId }
-                            : new[] { trade.FromTokenId, liquidityGoalAddress, trade.ToTokenId };
-
+        string liquidityStartAddress =
+            trade.ToTokenId.Equals(trade.LiquidityPair.UnstableTokenId, StringComparison.OrdinalIgnoreCase)
+                ? trade.LiquidityPair.PairedTokenId
+                : trade.LiquidityPair.UnstableTokenId;
+        List<string> path = new() { trade.FromTokenId };
+        if (!liquidityStartAddress.Equals(trade.FromTokenId, StringComparison.OrdinalIgnoreCase))
+        {
+            path.Add(liquidityStartAddress);
+        }
+        if (!liquidityGoalAddress.Equals(trade.ToTokenId, StringComparison.OrdinalIgnoreCase))
+        {
+            path.Add(liquidityGoalAddress);
+        }
+        path.Add(trade.ToTokenId);
+        
         object[] parameters =
         {
             amount,
             0,
-            path,
+            path.ToArray(),
             trade.WalletAddress,
             (DateTime.UtcNow.Ticks + 10000)
         };
