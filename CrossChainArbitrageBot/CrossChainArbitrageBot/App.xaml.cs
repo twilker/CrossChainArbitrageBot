@@ -69,7 +69,7 @@ public partial class App : Application
         Web3 bscConnector = new(url: ConfigurationManager.AppSettings["BscHttpApi"],
                                 account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 56));
         bscConnector.TransactionManager.UseLegacyAsDefault = true;
-        bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(5, fromUnit: UnitConversion.EthUnit.Gwei);
+        bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(10, fromUnit: UnitConversion.EthUnit.Gwei);
         Dictionary<string, string> bscAbis = new()
         {
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
@@ -80,7 +80,7 @@ public partial class App : Application
         Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
                                  account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 43114));
         avaxConnector.TransactionManager.UseLegacyAsDefault = true;
-        avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(35, fromUnit: UnitConversion.EthUnit.Gwei);
+        avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(40, fromUnit: UnitConversion.EthUnit.Gwei);
         Dictionary<string, string> avaxAbis = new()
         {
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },

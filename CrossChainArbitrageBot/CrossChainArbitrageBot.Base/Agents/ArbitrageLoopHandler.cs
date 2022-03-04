@@ -57,7 +57,11 @@ public class ArbitrageLoopHandler : Agent
             if (waitingTransactions.IsEmpty)
             {
                 loopState = loopState.PopAction(out Action<Message, bool>? nextAction);
-                nextAction?.Invoke(messageData, finished.Result == TransactionResult.Success);
+                nextAction?.Invoke(messageData, finished.Result == TransactionResult.Success && loopState.Success);
+            }
+            else if (finished.Result != TransactionResult.Success)
+            {
+                loopState = loopState.SetSuccess(false);
             }
             return;
         }
@@ -145,7 +149,9 @@ public class ArbitrageLoopHandler : Agent
                 else
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
-                    //TODO important message with info from domain root started message + Telegram (based on important message?)
+                    OnMessage(new ImportantNotice(messageData,
+                                                  "Auto loop stopped, because a transaction failed.",
+                                                  NoticeSeverity.Error));
                 }
             });
         }
@@ -158,6 +164,13 @@ public class ArbitrageLoopHandler : Agent
             return;
         }
 
+        // if (!CanLoop())
+        // {
+        //     OnMessage(new ImportantNotice($""));
+        //     nextAction(messageData, true);
+        //     return;
+        // }
+        
         BlockchainName buySide = BuySide.BlockchainName;
         BlockchainName sellSide = SellSide.BlockchainName;
         double totalNetWorth = latestData!.Updates.Sum(dataUpdate => dataUpdate.StableAmount +
@@ -373,22 +386,28 @@ public class ArbitrageLoopHandler : Agent
         OnMessage(new LoopStateChanged(message, newState.Kind == LoopKind.Auto, newState.State));
     }
 
-    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message, bool>? NextAction=null, bool AutoLoopCancelRequested = false)
+    private readonly record struct InternalLoopState(LoopState State, LoopKind Kind, Action<Message, bool>? NextAction=null, 
+                                                     bool AutoLoopCancelRequested = false, bool Success = true)
     {
         public InternalLoopState PushNextAction(Action<Message, bool> nextAction)
         {
-            return new InternalLoopState(State, Kind, nextAction, AutoLoopCancelRequested);
+            return new InternalLoopState(State, Kind, nextAction, AutoLoopCancelRequested, Success);
         }
 
         public InternalLoopState PopAction(out Action<Message, bool>? nextAction)
         {
             nextAction = NextAction;
-            return new InternalLoopState(State, Kind, AutoLoopCancelRequested:AutoLoopCancelRequested);
+            return new InternalLoopState(State, Kind, AutoLoopCancelRequested:AutoLoopCancelRequested, Success:Success);
         }
 
         public InternalLoopState RequestAutoLoopCancel()
         {
-            return new InternalLoopState(State, Kind, NextAction, true);
+            return new InternalLoopState(State, Kind, NextAction, true, Success);
+        }
+
+        public InternalLoopState SetSuccess(bool success)
+        {
+            return new InternalLoopState(State, Kind, NextAction, AutoLoopCancelRequested, success);
         }
     }
 }
