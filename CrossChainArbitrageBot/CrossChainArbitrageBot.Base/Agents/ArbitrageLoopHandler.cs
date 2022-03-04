@@ -150,8 +150,13 @@ public class ArbitrageLoopHandler : Agent
                 {
                     ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
                     OnMessage(new ImportantNotice(messageData,
-                                                  "Auto loop stopped, because a transaction failed.",
+                                                  "Auto loop stopped, because a transaction failed. Restart after 1 minute.",
                                                   NoticeSeverity.Error));
+                    Task.Factory.StartNew(() =>
+                    {
+                        Thread.Sleep(60000);
+                        ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+                    });
                 }
             });
         }
