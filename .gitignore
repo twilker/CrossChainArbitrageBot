@@ -11,3 +11,4 @@ TestResults.xml
 *.bat
 nuget.config
 App.config
+app.db
