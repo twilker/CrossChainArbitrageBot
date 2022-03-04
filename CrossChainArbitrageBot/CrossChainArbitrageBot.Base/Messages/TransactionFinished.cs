@@ -26,5 +26,5 @@ public enum TransactionResult
 {
     Success,
     Failed,
-    Rejected
+    Timeout
 }

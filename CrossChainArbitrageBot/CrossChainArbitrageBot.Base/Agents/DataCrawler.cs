@@ -130,6 +130,7 @@ internal class DataCrawler : Agent
             catch (Exception e)
             {
                 Log.Warning(e, $"Error while crawling data {e}");
+                Thread.Sleep(2000);
             }
         }
     }

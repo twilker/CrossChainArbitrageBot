@@ -280,6 +280,7 @@ public class SimulationBlockchainExecuter : Agent
 
         OnMessage(new ImportantNotice(executing, $"Bridging token. ETA: {DateTime.Now+new TimeSpan(0,0,0,0,celerBridgeDuration):HH:mm:ss}"));
         OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, sourceTokenUpdate));
+        OnMessage(new TransactionExecuted(executing, true));
         Thread.Sleep(executing.BlockchainName switch
         {
             BlockchainName.Bsc => celerBridgeDuration,
@@ -288,10 +289,9 @@ public class SimulationBlockchainExecuter : Agent
         });
 
         OnMessage(new ImportantNotice(
-                      executing,
+                      latestUpdate,
                       $"Simulated bridge completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {targetData.BlockchainName}"));
-        OnMessage(new WalletBalanceUpdated(executing, targetTokenUpdate));
-        OnMessage(new TransactionExecuted(executing, true));
+        OnMessage(new WalletBalanceUpdated(latestUpdate, targetTokenUpdate));
     }
 
     protected override void ExecuteCore(Message messageData)

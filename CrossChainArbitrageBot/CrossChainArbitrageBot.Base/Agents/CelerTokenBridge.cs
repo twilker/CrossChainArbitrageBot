@@ -83,7 +83,7 @@ public class CelerTokenBridge : Agent
         {
             MessageDomain.TerminateDomainsOf(messageData);
             OnMessage(new TokenBridged(messageData, executed.Success, 
-                                       bridging.Amount, bridging.OriginalTargetAmount,
+                                       bridging.Amount,
                                        bridging.SourceChain switch
                                        {
                                            BlockchainName.Bsc => BlockchainName.Avalanche,

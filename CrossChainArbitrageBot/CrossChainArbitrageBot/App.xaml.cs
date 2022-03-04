@@ -69,7 +69,9 @@ public partial class App : Application
         Web3 bscConnector = new(url: ConfigurationManager.AppSettings["BscHttpApi"],
                                 account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 56));
         bscConnector.TransactionManager.UseLegacyAsDefault = true;
-        bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(10, fromUnit: UnitConversion.EthUnit.Gwei);
+        int gasPrice = int.Parse(ConfigurationManager.AppSettings["BscGasPrice"]
+                                ?? throw new ConfigurationErrorsException("BscGasPrice not configured."));
+        bscConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(gasPrice, fromUnit: UnitConversion.EthUnit.Gwei);
         Dictionary<string, string> bscAbis = new()
         {
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },
@@ -80,7 +82,9 @@ public partial class App : Application
         Web3 avaxConnector = new(url: ConfigurationManager.AppSettings["AvalancheHttpApi"],
                                  account: new Account(ConfigurationManager.AppSettings["WalletPrivateKey"], 43114));
         avaxConnector.TransactionManager.UseLegacyAsDefault = true;
-        avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(40, fromUnit: UnitConversion.EthUnit.Gwei);
+        gasPrice = int.Parse(ConfigurationManager.AppSettings["AvalancheGasPrice"]
+                             ?? throw new ConfigurationErrorsException("AvalancheGasPrice not configured."));
+        avaxConnector.TransactionManager.DefaultGasPrice = Web3.Convert.ToWei(gasPrice, fromUnit: UnitConversion.EthUnit.Gwei);
         Dictionary<string, string> avaxAbis = new()
         {
             {"Erc20", File.ReadAllText("./Abis/Erc20.json") },

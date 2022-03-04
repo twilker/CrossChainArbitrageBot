@@ -15,10 +15,14 @@ namespace CrossChainArbitrageBot.Base.Agents;
 internal class TransactionGateway : Agent
 {
     private readonly MessageCollector<DataUpdated, TransactionStarted> collector;
+    private DataUpdated? latestUpdate;
+    private readonly int timeout;
 
     public TransactionGateway(IMessageBoard messageBoard) : base(messageBoard)
     {
         collector = new MessageCollector<DataUpdated,TransactionStarted>(OnCollected);
+        timeout = int.Parse(ConfigurationManager.AppSettings["TransactionTimeout"]
+                            ?? throw new ConfigurationErrorsException("TransactionTimeout not configured."));
     }
 
     private void OnCollected(MessageCollection<DataUpdated, TransactionStarted> set)
@@ -87,25 +91,21 @@ internal class TransactionGateway : Agent
                                               TokenType.Stable));
                 break;
             case TransactionType.BridgeStable:
-                DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
                 OnMessage(new ImportantNotice(
                               set,
                               $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to BSC"));
                 OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
                                             lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                            targetUpdate.StableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.StableDecimals,
                                             GetBridgeSourceToken(TokenType.Stable, BlockchainName.Avalanche),
                                             TokenType.Stable));
                 break;
             case TransactionType.BridgeUnstable:
-                targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Bsc);
                 OnMessage(new ImportantNotice(
                               set,
                               $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to BSC"));
                 OnMessage(new TokenBridging(set, BlockchainName.Avalanche,
                                             lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                            targetUpdate.UnstableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
                                             GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Avalanche),
                                             TokenType.Unstable));
@@ -181,25 +181,21 @@ internal class TransactionGateway : Agent
                                               TokenType.Stable));
                 break;
             case TransactionType.BridgeStable:
-                DataUpdate targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
                 OnMessage(new ImportantNotice(
                               set,
                               $"Bridging {lastUpdate.StableAmount * set.Message2.TransactionAmount} {lastUpdate.StableSymbol} to Avalanche"));
                 OnMessage(new TokenBridging(set, BlockchainName.Bsc,
                                             lastUpdate.StableAmount * set.Message2.TransactionAmount,
-                                            targetUpdate.StableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.StableDecimals,
                                             GetBridgeSourceToken(TokenType.Stable, BlockchainName.Bsc),
                                             TokenType.Stable));
                 break;
             case TransactionType.BridgeUnstable:
-                targetUpdate = set.Message1.Updates.First(u => u.BlockchainName == BlockchainName.Avalanche);
                 OnMessage(new ImportantNotice(
                               set,
                               $"Bridging {lastUpdate.UnstableAmount * set.Message2.TransactionAmount} {lastUpdate.UnstableSymbol} to Avalanche"));
                 OnMessage(new TokenBridging(set, BlockchainName.Bsc,
                                             lastUpdate.UnstableAmount * set.Message2.TransactionAmount,
-                                            targetUpdate.UnstableAmount,
                                             lastUpdate.WalletAddress, lastUpdate.UnstableDecimals,
                                             GetBridgeSourceToken(TokenType.Unstable, BlockchainName.Bsc),
                                             TokenType.Unstable));
@@ -263,7 +259,45 @@ internal class TransactionGateway : Agent
         };
     }
 
-    private readonly record struct AwaitingAmount(BlockchainName BlockchainName, double OriginalAmount, double ExpectedAmount, Message CompletedMessage, TokenType TokenType);
+    private record AwaitingAmount(BlockchainName BlockchainName, double OriginalAmount,
+                                                  double ExpectedAmount, Message CompletedMessage, TokenType TokenType)
+    {
+        private readonly int timeout = -1;
+
+        public bool IsTimeoutReached { get; private set; } 
+
+        public int Timeout
+        {
+            get => timeout;
+            init
+            {
+                timeout = value;
+                if (timeout > 0)
+                {
+                    Task.Factory.StartNew(WaitForTimeout);
+                }
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hashCode = (int)BlockchainName;
+                hashCode = (hashCode * 397) ^ OriginalAmount.GetHashCode();
+                hashCode = (hashCode * 397) ^ ExpectedAmount.GetHashCode();
+                hashCode = (hashCode * 397) ^ CompletedMessage.GetHashCode();
+                hashCode = (hashCode * 397) ^ (int)TokenType;
+                return hashCode;
+            }
+        }
+
+        private void WaitForTimeout()
+        {
+            Thread.Sleep(timeout);
+            IsTimeoutReached = true;
+        }
+    };
 
     private readonly ConcurrentHashSet<AwaitingAmount> awaitingAmounts = new();
 
@@ -289,6 +323,7 @@ internal class TransactionGateway : Agent
 
         void ProcessDataUpdate()
         {
+            latestUpdate = dataUpdated;
             foreach (AwaitingAmount awaitingAmount in awaitingAmounts)
             {
                 DataUpdate update = dataUpdated.Updates.First(u => u.BlockchainName == awaitingAmount.BlockchainName);
@@ -303,8 +338,13 @@ internal class TransactionGateway : Agent
                     awaitingAmounts.TryRemove(awaitingAmount))
                 {
                     OnMessage(new TransactionFinished(awaitingAmount.CompletedMessage, TransactionResult.Success));
+                    return;
                 }
-                //TODO timeout
+
+                if (awaitingAmount.IsTimeoutReached && awaitingAmounts.TryRemove(awaitingAmount))
+                {
+                    OnMessage(new TransactionFinished(awaitingAmount.CompletedMessage, TransactionResult.Timeout));
+                }
             }
         }
 
@@ -312,8 +352,21 @@ internal class TransactionGateway : Agent
         {
             if (tokenBridged.Success)
             {
-                awaitingAmounts.Add(new AwaitingAmount(tokenBridged.TargetChain, tokenBridged.OriginalTargetAmount,
-                                                       tokenBridged.AmountSend, tokenBridged, tokenBridged.TokenType));
+                double currentAmount = tokenBridged.TokenType == TokenType.Unstable
+                                           ? latestUpdate!.Updates
+                                                         .First(u => u.BlockchainName ==
+                                                                     tokenBridged.TargetChain)
+                                                         .UnstableAmount
+                                           : latestUpdate!.Updates
+                                                         .First(u => u.BlockchainName ==
+                                                                     tokenBridged.TargetChain)
+                                                         .StableAmount;
+                                                   
+                awaitingAmounts.Add(new AwaitingAmount(tokenBridged.TargetChain, currentAmount,
+                                                       tokenBridged.AmountSend, tokenBridged, tokenBridged.TokenType)
+                {
+                    Timeout = timeout
+                });
             }
             else
             {
@@ -326,7 +379,10 @@ internal class TransactionGateway : Agent
             if (tradeCompleted.Success)
             {
                 awaitingAmounts.Add(new AwaitingAmount(tradeCompleted.BlockchainName, tradeCompleted.OriginalAmount,
-                                                       tradeCompleted.AmountExpected, tradeCompleted, tradeCompleted.TokenType));
+                                                       tradeCompleted.AmountExpected, tradeCompleted, tradeCompleted.TokenType)
+                {
+                    Timeout = timeout
+                });
             }
             else
             {
