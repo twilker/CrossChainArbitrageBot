@@ -123,6 +123,8 @@ public class ArbitrageLoopHandler : Agent
         CheckIdleAutoLoop(messageData);
     }
 
+    private int splitAssets = 0; 
+
     private void CheckIdleAutoLoop(Message messageData)
     {
         if (loopState.State != LoopState.Idle || loopState.Kind != LoopKind.Auto)
@@ -136,30 +138,94 @@ public class ArbitrageLoopHandler : Agent
             return;
         }
 
-        if (MinimalProfitPossible())
+        if (FundsInSingleAsset(out bool fundsInStable, out DataUpdate side))
         {
-            ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Auto), messageData);
-            Loop(messageData, (m, success) =>
+            if (Interlocked.Exchange(ref splitAssets, 1) != 0)
             {
-                if (success)
-                {
-                    ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
-                    CheckIdleAutoLoop(m);
-                }
-                else
-                {
-                    ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
-                    OnMessage(new ImportantNotice(messageData,
-                                                  "Auto loop stopped, because a transaction failed. Restart after 1 minute.",
-                                                  NoticeSeverity.Error));
-                    Task.Factory.StartNew(() =>
-                    {
-                        Thread.Sleep(60000);
-                        ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
-                    });
-                }
+                return;
+            }
+            double amount = fundsInStable
+                                ? OptimalBuyVolume / side.StableAmount
+                                : OptimalBuyVolume / (side.UnstableAmount * side.UnstablePrice);
+            TransactionStarted started = new(messageData,
+                                             amount, side.BlockchainName,
+                                             fundsInStable
+                                                 ? TransactionType.StableToUnstable
+                                                 : TransactionType.UnstableToStable);
+            waitingTransactions.Add(started);
+            loopState = loopState.PushNextAction((m, _) =>
+            {
+                splitAssets = 0;
+                CheckIdleAutoLoop(m);
             });
+            OnMessages(new []{started});
+            return;
         }
+
+        if (!MinimalProfitPossible())
+        {
+            return;
+        }
+
+        ChangeLoopState(new InternalLoopState(LoopState.Running, LoopKind.Auto), messageData);
+        Loop(messageData, (m, success) =>
+        {
+            if (success)
+            {
+                ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+                CheckIdleAutoLoop(m);
+            }
+            else
+            {
+                ChangeLoopState(new InternalLoopState(LoopState.Stopped, LoopKind.None), messageData);
+                OnMessage(new ImportantNotice(messageData,
+                                              "Auto loop stopped, because a transaction failed. Restart after 1 minute.",
+                                              NoticeSeverity.Error));
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(60000);
+                    ChangeLoopState(new InternalLoopState(LoopState.Idle, LoopKind.Auto), messageData);
+                });
+            }
+        });
+    }
+
+    private bool FundsInSingleAsset(out bool isStable, out DataUpdate side)
+    {
+        if (BuySide.UnstableAmount * BuySide.UnstablePrice < 10 &&
+            SellSide.UnstableAmount * SellSide.UnstablePrice < 10)
+        {
+            isStable = true;
+            if (BuySide.StableAmount > OptimalBuyVolume)
+            {
+                side = BuySide;
+                return true;
+            }
+            if (SellSide.StableAmount > OptimalBuyVolume)
+            {
+                side = SellSide;
+                return true;
+            }
+        }
+        if (BuySide.StableAmount < 10 &&
+            SellSide.StableAmount < 10)
+        {
+            isStable = false;
+            if (BuySide.UnstableAmount * BuySide.UnstablePrice > OptimalBuyVolume)
+            {
+                side = BuySide;
+                return true;
+            }
+            if (SellSide.UnstableAmount * SellSide.UnstablePrice > OptimalBuyVolume)
+            {
+                side = SellSide;
+                return true;
+            }
+        }
+
+        isStable = default;
+        side = default;
+        return false;
     }
 
     private void Loop(Message messageData, Action<Message, bool> nextAction)
@@ -168,13 +234,6 @@ public class ArbitrageLoopHandler : Agent
         {
             return;
         }
-
-        // if (!CanLoop())
-        // {
-        //     OnMessage(new ImportantNotice($""));
-        //     nextAction(messageData, true);
-        //     return;
-        // }
         
         BlockchainName buySide = BuySide.BlockchainName;
         BlockchainName sellSide = SellSide.BlockchainName;
@@ -234,6 +293,28 @@ public class ArbitrageLoopHandler : Agent
     {
         OnMessage(new ImportantNotice(messageData, "Preparing loop (check native balance + bridge)"));
         List<TransactionStarted> preparationTransactions = new();
+
+        if (BuySide.StableAmount < OptimalBuyVolume &&
+            SellSide.StableAmount > bridgeFee * 10)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 1,
+                                                               SellSide.BlockchainName,
+                                                               TransactionType.BridgeStable));
+        }
+
+        if (BuySide.UnstableAmount * BuySide.UnstablePrice > bridgeFee*10)
+        {
+            preparationTransactions.Add(new TransactionStarted(messageData, 1,
+                                                               BuySide.BlockchainName,
+                                                               TransactionType.BridgeUnstable));
+        }
+
+        if (preparationTransactions.Any())
+        {
+            SendPreparationTransactions(nextAction, preparationTransactions);
+            return true;
+        }
+        
         if (BuySide.AccountBalance * BuySide.NativePrice < MinimalGasPreLoop)
         {
             preparationTransactions.Add(new TransactionStarted(messageData, 0,
@@ -254,27 +335,6 @@ public class ArbitrageLoopHandler : Agent
                                                                SellSide.UnstablePrice
                                                                    ? TransactionType.StableToNative
                                                                    : TransactionType.UnstableToNative));
-        }
-
-        if (preparationTransactions.Any())
-        {
-            SendPreparationTransactions(nextAction, preparationTransactions);
-            return true;
-        }
-
-        if (BuySide.StableAmount < OptimalBuyVolume &&
-            SellSide.StableAmount > bridgeFee * 10)
-        {
-            preparationTransactions.Add(new TransactionStarted(messageData, 1,
-                                                               SellSide.BlockchainName,
-                                                               TransactionType.BridgeStable));
-        }
-
-        if (BuySide.UnstableAmount * BuySide.UnstablePrice > bridgeFee*10)
-        {
-            preparationTransactions.Add(new TransactionStarted(messageData, 1,
-                                                               BuySide.BlockchainName,
-                                                               TransactionType.BridgeUnstable));
         }
 
         if (preparationTransactions.Any())
@@ -331,8 +391,7 @@ public class ArbitrageLoopHandler : Agent
     private bool CanAutoLoop()
     {
         return loopState.Kind == LoopKind.Auto ||
-               loopState.State == LoopState.Stopped &&
-               LoopFundsFound();
+               loopState.State == LoopState.Stopped;
     }
 
     private bool CanLoop()
