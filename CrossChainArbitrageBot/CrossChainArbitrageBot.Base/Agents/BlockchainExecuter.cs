@@ -36,8 +36,7 @@ public class BlockchainExecuter : Agent
                     gas, set.Message2.Amount, set.Message2.Parameters);
                 transactionCall.Wait();
                 Task<TransactionReceipt>? receipt =
-                    connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(
-                        transactionCall.Result, new CancellationTokenSource(TimeSpan.FromMinutes(2)));
+                    connection.Connection.TransactionManager.TransactionReceiptService.PollForReceiptAsync(transactionCall.Result);
                 receipt.Wait();
                 OnMessage(new ImportantNotice(
                               set,
