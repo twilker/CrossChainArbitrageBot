@@ -4,6 +4,9 @@ namespace CrossChainArbitrageBot.Base;
 
 public static class Extensions
 {
+    public const string CovalentTransactionApi =
+        "https://api.covalenthq.com/v1/{0}/address/{1}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number={2}&page-size={3}&key={4}";
+    
     public static double RoundedAmount(this double amount)
     {
         int i;

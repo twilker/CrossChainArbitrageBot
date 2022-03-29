@@ -5,11 +5,13 @@ using CrossChainArbitrageBot.Base.Messages;
 using CrossChainArbitrageBot.Base.Models;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Web3;
+using Newtonsoft.Json.Linq;
 
 namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(TradeInitiating))]
 [Consumes(typeof(TransactionExecuted))]
+[Consumes(typeof(EstimatingGasBasedOnTransactions))]
 public class TraderJoeTrader : Agent
 {
     public TraderJoeTrader(IMessageBoard messageBoard) : base(messageBoard)
@@ -18,6 +20,11 @@ public class TraderJoeTrader : Agent
 
     protected override void ExecuteCore(Message messageData)
     {
+        if (messageData.TryGet(out EstimatingGasBasedOnTransactions estimatingGas))
+        {
+            TryEstimateGas(estimatingGas);
+            return;
+        }
         if (messageData.TryGet(out TradeInitiating trade) &&
             trade.Platform == TradingPlatform.TraderJoe)
         {
@@ -41,6 +48,72 @@ public class TraderJoeTrader : Agent
                                          trade.ExpectedAmount,
                                          trade.TokenType));
         }
+    }
+
+    private void TryEstimateGas(EstimatingGasBasedOnTransactions estimatingGas)
+    {
+        if (estimatingGas.GasType != GasType.Trade || estimatingGas.BlockchainName != BlockchainName.Avalanche)
+        {
+            return;
+        }
+
+        string sourceChainId = ConfigurationManager.AppSettings["AvalancheId"]
+                               ?? throw new ConfigurationErrorsException("AvalancheId not configured");
+        string sourceContractAddress = ConfigurationManager.AppSettings["TraderJoeRouterAddress"]
+                                      ?? throw new ConfigurationErrorsException("TraderJoeRouterAddress not configured");
+        int gas = EstimateGas(sourceChainId, sourceContractAddress);
+        OnMessage(new GasEstimatedBasedOnTransactions(estimatingGas, gas, GasType.Trade, BlockchainName.Avalanche));
+    }
+
+    private static int EstimateGas(string sourceChainId, string sourceContractAddress)
+    {
+        using HttpClient client = new HttpClient();
+        int gasSpent = int.MinValue;
+        int page = 0;
+        while (gasSpent < 0)
+        {
+            string url = string.Format(Extensions.CovalentTransactionApi, sourceChainId, sourceContractAddress,
+                                       page, 5, ConfigurationManager.AppSettings["CovalentApiKey"]);
+            page++;
+            if (page > 100)
+            {
+                throw new InvalidOperationException(
+                    "No Send transaction in the last 500 transaction -> Something is off.");
+            }
+
+            Task<HttpResponseMessage>? getCall = null;
+            for (int i = 0; i < 3 && getCall?.Result.IsSuccessStatusCode != true; i++)
+            {
+                getCall = client.GetAsync(url);
+                getCall.Wait();
+                Thread.Sleep(1000);
+            }
+            
+            if (getCall?.Result.IsSuccessStatusCode != true)
+            {
+                throw new InvalidOperationException(
+                    $"Status Code {getCall.Result.StatusCode} does not suggest success.");
+            }
+
+            Task<string> contentCall = getCall.Result.Content.ReadAsStringAsync();
+            contentCall.Wait();
+            JObject jObject = JObject.Parse(contentCall.Result);
+            JObject? lastSendLog = jObject["data"]?["items"]?.Children<JObject>()
+                                                             .Where(e => e["log_events"]?.Any() == true)
+                                                             .Select(e => e["log_events"]?[0]?["decoded"] as JObject)
+                                                             .FirstOrDefault(
+                                                                  e => e?["name"]?.Value<string>() == "swapExactTokensForTokens" &&
+                                                                       e?["gas_offered"]?.Value<int>() >
+                                                                       e?["gas_spent"]?.Value<int>());
+            if (lastSendLog == null)
+            {
+                continue;
+            }
+
+            gasSpent = lastSendLog["gas_spent"]!.Value<int>();
+        }
+
+        return gasSpent;
     }
 
     private void TradeTokenForToken(Message messageData, TradeInitiating trade)

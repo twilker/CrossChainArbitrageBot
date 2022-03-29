@@ -17,5 +17,6 @@ public class BaseModule : Module
         builder.RegisterType<ArbitrageLoopHandler>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<DataLogger>().As<Agent>().InstancePerLifetimeScope();
         builder.RegisterType<TelegramBot>().As<Agent>().InstancePerLifetimeScope();
+        builder.RegisterType<GasEstimator>().As<Agent>().InstancePerLifetimeScope();
     }
 }

@@ -12,11 +12,9 @@ namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(TokenBridging))]
 [Consumes(typeof(TransactionExecuted))]
+[Consumes(typeof(EstimatingGasBasedOnTransactions))]
 public class CelerTokenBridge : Agent
 {
-    private const string CovalentTransactionApi =
-        "https://api.covalenthq.com/v1/{0}/address/{1}/transactions_v2/?quote-currency=USD&format=JSON&block-signed-at-asc=false&no-logs=false&page-number={2}&page-size={3}&key={4}";
-
     private long lastKnownNonceValue = 1646285611413;
 
     private readonly Random random = new();
@@ -27,6 +25,11 @@ public class CelerTokenBridge : Agent
 
     protected override void ExecuteCore(Message messageData)
     {
+        if (messageData.TryGet(out EstimatingGasBasedOnTransactions estimatingGas))
+        {
+            TryEstimateGas(estimatingGas);
+            return;
+        }
         if(messageData.TryGet(out TokenBridging bridging))
         {
             string contractAddress = bridging.SourceChain switch
@@ -94,6 +97,91 @@ public class CelerTokenBridge : Agent
         }
     }
 
+    private void TryEstimateGas(EstimatingGasBasedOnTransactions estimatingGas)
+    {
+        switch (estimatingGas.GasType)
+        {
+            case GasType.Trade:
+                return;
+            case GasType.Bridge:
+                string sourceChainId = estimatingGas.BlockchainName == BlockchainName.Bsc
+                                           ? ConfigurationManager.AppSettings["BscId"]
+                                             ?? throw new ConfigurationErrorsException("BscId not configured")
+                                           : ConfigurationManager.AppSettings["AvalancheId"]
+                                             ?? throw new ConfigurationErrorsException("AvalancheId not configured");
+                string destinationId = estimatingGas.BlockchainName == BlockchainName.Bsc
+                                           ? ConfigurationManager.AppSettings["AvalancheId"]
+                                             ?? throw new ConfigurationErrorsException("AvalancheId not configured")
+                                           : ConfigurationManager.AppSettings["BscId"]
+                                             ?? throw new ConfigurationErrorsException("BscId not configured");
+                string sourceContractAddress = estimatingGas.BlockchainName == BlockchainName.Bsc
+                                                   ? ConfigurationManager.AppSettings["BscCelerBridgeAddress"]
+                                                     ?? throw new ConfigurationErrorsException("BscCelerBridgeAddress not configured")
+                                                   : ConfigurationManager.AppSettings["AvalancheCelerBridgeAddress"]
+                                                     ?? throw new ConfigurationErrorsException("AvalancheCelerBridgeAddress not configured");
+                int gasSpent = EstimateGas(sourceChainId, sourceContractAddress, destinationId);
+                OnMessage(new GasEstimatedBasedOnTransactions(estimatingGas, gasSpent, GasType.Bridge,
+                                                              estimatingGas.BlockchainName));
+                break;
+            case GasType.BridgeFee:
+                OnMessage(new GasEstimatedBasedOnTransactions(estimatingGas, 1, GasType.BridgeFee,
+                                                              estimatingGas.BlockchainName));
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private static int EstimateGas(string sourceChainId, string sourceContractAddress, string destinationId)
+    {
+        using HttpClient client = new HttpClient();
+        int gasSpent = int.MinValue;
+        int page = 0;
+        while (gasSpent < 0)
+        {
+            string url = string.Format(Extensions.CovalentTransactionApi, sourceChainId, sourceContractAddress,
+                                       page, 5, ConfigurationManager.AppSettings["CovalentApiKey"]);
+            page++;
+            if (page > 100)
+            {
+                throw new InvalidOperationException("No Send transaction in the last 500 transaction -> Something is off.");
+            }
+
+            Task<HttpResponseMessage>? getCall = null;
+            for (int i = 0; i < 3 && getCall?.Result.IsSuccessStatusCode != true; i++)
+            {
+                getCall = client.GetAsync(url);
+                getCall.Wait();
+                Thread.Sleep(1000);
+            }
+
+            if (getCall?.Result.IsSuccessStatusCode != true)
+            {
+                throw new InvalidOperationException($"Status Code {getCall.Result.StatusCode} does not suggest success.");
+            }
+
+            Task<string> contentCall = getCall.Result.Content.ReadAsStringAsync();
+            contentCall.Wait();
+            JObject jObject = JObject.Parse(contentCall.Result);
+            JObject? lastSendLog = jObject["data"]?["items"]?.Children<JObject>()
+                                                             .Where(e => e["log_events"]?.Any() == true)
+                                                             .Select(e => e["log_events"]?[0]?["decoded"] as JObject)
+                                                             .FirstOrDefault(e => e?["name"]?.Value<string>() == "Send" &&
+                                                                                 e?["dstChainId"]?.Value<string>() ==
+                                                                                 destinationId &&
+                                                                                 e?["gas_offered"]?.Value<int>() >
+                                                                                 e?["gas_spent"]?.Value<int>());
+            if (lastSendLog == null)
+            {
+                continue;
+            }
+
+            gasSpent = lastSendLog["gas_spent"]!.Value<int>();
+        }
+
+        return gasSpent;
+    }
+
     private static long GetLastUsedNonce(string sourceChainId, string sourceContractAddress)
     {
         using HttpClient client = new HttpClient();
@@ -101,7 +189,7 @@ public class CelerTokenBridge : Agent
         int page = 0;
         while (result < 0)
         {
-            string url = string.Format(CovalentTransactionApi, sourceChainId, sourceContractAddress,
+            string url = string.Format(Extensions.CovalentTransactionApi, sourceChainId, sourceContractAddress,
                                        page, 5, ConfigurationManager.AppSettings["CovalentApiKey"]);
             page++;
             if (page > 100)
