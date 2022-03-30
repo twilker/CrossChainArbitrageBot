@@ -114,7 +114,7 @@ public class TraderJoeTrader : Agent
         OnMessage(new TransactionExecuting(messageData, BlockchainName.Avalanche,
                                            "TraderJoe",
                                            contractAddress,
-                                           "swapExactTokensForETH",
+                                           "swapExactTokensForAVAX",
                                            new HexBigInteger(0),
                                            parameters));
     }

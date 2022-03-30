@@ -14,20 +14,14 @@ using Nethereum.Web3;
 namespace CrossChainArbitrageBot.SimulationBase.Agents;
 
 [Consumes((typeof(TransactionExecuting)))]
+[Consumes((typeof(GasEstimated)))]
 [Consumes((typeof(DataUpdated)))]
 [Consumes((typeof(TransactionsUntilErrorChanged)))]
 public class SimulationBlockchainExecuter : Agent
 {
     private readonly int bscTradeDuration;
-    private readonly double bscSimpleTradeGasCosts;
-    private readonly double bscLongTradeGasCosts;
     private readonly int avalancheTradeDuration;
-    private readonly double avalancheSimpleTradeGasCosts;
-    private readonly double avalancheLongTradeGasCosts;
     private readonly int celerBridgeDuration;
-    private readonly double celerBridgeCosts;
-    private readonly double celerBridgeBscGasCosts;
-    private readonly double celerBridgeAvalancheGasCosts;
     private readonly string pancakeSwapRouterAddress;
     private readonly string traderJoeRouterAddress;
     private readonly string bscCelerBridgeAddress;
@@ -36,6 +30,8 @@ public class SimulationBlockchainExecuter : Agent
 
     private DataUpdated? latestUpdate;
     private int transactionsUntilError = 0;
+
+    private readonly MessageCollector<TransactionExecuting, GasEstimated> collector;
 
     public SimulationBlockchainExecuter(IMessageBoard messageBoard) : base(messageBoard)
     {
@@ -47,34 +43,35 @@ public class SimulationBlockchainExecuter : Agent
 
         NameValueCollection simulationConfiguration = ConfigurationManager.GetSection("SimulationConfiguration") as NameValueCollection ?? throw new ConfigurationErrorsException("SimulationConfiguration not found.");
         bscTradeDuration = int.Parse(simulationConfiguration["BscTradeDuration"] ?? throw new ConfigurationErrorsException("BscTradeDuration not found."));
-        bscSimpleTradeGasCosts = double.Parse(simulationConfiguration["BscSimpleTradeGasCosts"] ?? throw new ConfigurationErrorsException("BscSimpleTradeGasCosts not found."));
-        bscLongTradeGasCosts = double.Parse(simulationConfiguration["BscLongTradeGasCosts"] ?? throw new ConfigurationErrorsException("BscLongTradeGasCosts not found."));
         avalancheTradeDuration = int.Parse(simulationConfiguration["AvalancheTradeDuration"] ?? throw new ConfigurationErrorsException("AvalancheTradeDuration not found."));
-        avalancheSimpleTradeGasCosts = double.Parse(simulationConfiguration["AvalancheSimpleTradeGasCosts"] ?? throw new ConfigurationErrorsException("AvalancheSimpleTradeGasCosts not found."));
-        avalancheLongTradeGasCosts = double.Parse(simulationConfiguration["AvalancheLongTradeGasCosts"] ?? throw new ConfigurationErrorsException("AvalancheLongTradeGasCosts not found."));
         celerBridgeDuration = int.Parse(simulationConfiguration["CelerBridgeDuration"] ?? throw new ConfigurationErrorsException("CelerBridgeDuration not found."));
-        celerBridgeCosts = double.Parse(simulationConfiguration["CelerBridgeCosts"] ?? throw new ConfigurationErrorsException("CelerBridgeCosts not found."));
-        celerBridgeBscGasCosts = double.Parse(simulationConfiguration["CelerBridgeBscGasCosts"] ?? throw new ConfigurationErrorsException("CelerBridgeBscGasCosts not found."));
-        celerBridgeAvalancheGasCosts = double.Parse(simulationConfiguration["CelerBridgeAvalancheGasCosts"] ?? throw new ConfigurationErrorsException("CelerBridgeAvalancheGasCosts not found."));
+
+        collector = new MessageCollector<TransactionExecuting, GasEstimated>(OnMessagesCollected);
     }
 
-    private void TradeTokenToToken(TransactionExecuting executing)
+    private void OnMessagesCollected(MessageCollection<TransactionExecuting, GasEstimated> set)
+    {
+        set.MarkAsConsumed(set.Message1);
+        HandleTransaction(set);
+    }
+
+    private void TradeTokenToToken(MessageCollection<TransactionExecuting, GasEstimated> set)
     {
         if (latestUpdate == null)
         {
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
         
-        Thread.Sleep(executing.BlockchainName switch
+        Thread.Sleep(set.Message1.BlockchainName switch
         {
             BlockchainName.Bsc => bscTradeDuration,
             BlockchainName.Avalanche => avalancheTradeDuration,
             _ => throw new ArgumentOutOfRangeException()
         });
 
-        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == executing.BlockchainName);
-        object[] parameters = executing.Parameters;
+        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == set.Message1.BlockchainName);
+        object[] parameters = set.Message1.Parameters;
         string[] path = (string[])parameters[2];
         bool isStable = path.First().Equals(data.BlockchainName switch
         {
@@ -84,13 +81,13 @@ public class SimulationBlockchainExecuter : Agent
         }, StringComparison.OrdinalIgnoreCase);
         double gasCosts = data.BlockchainName switch
         {
-            BlockchainName.Bsc => path.Length == 2 ? bscSimpleTradeGasCosts : bscLongTradeGasCosts,
-            BlockchainName.Avalanche => path.Length == 2 ? avalancheSimpleTradeGasCosts : avalancheLongTradeGasCosts,
+            BlockchainName.Bsc => set.Message2.GasEstimation.BnbTradeAmount,
+            BlockchainName.Avalanche => set.Message2.GasEstimation.AvaxTradeAmount,
             _ => throw new ArgumentOutOfRangeException()
         };
         WalletBalanceUpdate nativeUpdate = new(data.BlockchainName,
                                                TokenType.Native,
-                                               data.AccountBalance - gasCosts / data.NativePrice);
+                                               data.AccountBalance - gasCosts);
         WalletBalanceUpdate stableUpdate;
         WalletBalanceUpdate unstableUpdate;
         LiquidityOffset liquidityOffset;
@@ -127,36 +124,36 @@ public class SimulationBlockchainExecuter : Agent
             stableUpdate.NewBalance < 0 ||
             unstableUpdate.NewBalance < 0)
         {
-            OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Stable - {stableUpdate}; Unstable - {unstableUpdate}; Native - {nativeUpdate}"));
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new ImportantNotice(set, $"Transaction failed because at least one balance would be negative: Stable - {stableUpdate}; Unstable - {unstableUpdate}; Native - {nativeUpdate}"));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
         
         OnMessage(new ImportantNotice(
-                      executing,
+                      set.Message1,
                       $"Simulated trade completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {received} {(!isStable ? data.StableSymbol : data.UnstableSymbol)}"));
-        OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, stableUpdate, unstableUpdate));
-        OnMessage(new LiquidityOffsetUpdated(executing, liquidityOffset, data.BlockchainName));
-        OnMessage(new TransactionExecuted(executing, true));
+        OnMessage(new WalletBalanceUpdated(set, nativeUpdate, stableUpdate, unstableUpdate));
+        OnMessage(new LiquidityOffsetUpdated(set, liquidityOffset, data.BlockchainName));
+        OnMessage(new TransactionExecuted(set, true));
     }
 
-    private void TradeTokenToNative(TransactionExecuting executing)
+    private void TradeTokenToNative(MessageCollection<TransactionExecuting, GasEstimated> set)
     {
         if (latestUpdate == null)
         {
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
         
-        Thread.Sleep(executing.BlockchainName switch
+        Thread.Sleep(set.Message1.BlockchainName switch
         {
             BlockchainName.Bsc => bscTradeDuration,
             BlockchainName.Avalanche => avalancheTradeDuration,
             _ => throw new ArgumentOutOfRangeException()
         });
 
-        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == executing.BlockchainName);
-        object[] parameters = executing.Parameters;
+        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == set.Message1.BlockchainName);
+        object[] parameters = set.Message1.Parameters;
         string[] path = (string[])parameters[2];
         bool isStable = path.First().Equals(data.BlockchainName switch
         {
@@ -166,8 +163,8 @@ public class SimulationBlockchainExecuter : Agent
         }, StringComparison.OrdinalIgnoreCase);
         double gasCosts = data.BlockchainName switch
         {
-            BlockchainName.Bsc => path.Length == 2 ? bscSimpleTradeGasCosts : bscLongTradeGasCosts,
-            BlockchainName.Avalanche => path.Length == 2 ? avalancheSimpleTradeGasCosts : avalancheLongTradeGasCosts,
+            BlockchainName.Bsc => set.Message2.GasEstimation.BnbTradeAmount,
+            BlockchainName.Avalanche => set.Message2.GasEstimation.AvaxTradeAmount,
             _ => throw new ArgumentOutOfRangeException()
         };
         
@@ -184,7 +181,7 @@ public class SimulationBlockchainExecuter : Agent
                                                   data.StableAmount - amount);
             nativeUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                    TokenType.Native,
-                                                   data.AccountBalance + received - gasCosts / data.NativePrice);
+                                                   data.AccountBalance + received - gasCosts);
         }
         else
         {
@@ -201,29 +198,29 @@ public class SimulationBlockchainExecuter : Agent
         if (nativeUpdate.NewBalance < 0 ||
             tokenUpdate.NewBalance < 0)
         {
-            OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Token - {tokenUpdate}; Native - {nativeUpdate}"));
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new ImportantNotice(set, $"Transaction failed because at least one balance would be negative: Token - {tokenUpdate}; Native - {nativeUpdate}"));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
         
         OnMessage(new ImportantNotice(
-                      executing,
+                      set,
                       $"Simulated trade completed. {amount} {(isStable ? data.StableSymbol : data.UnstableSymbol)} -> {received} {(data.BlockchainName == BlockchainName.Bsc ? "BNB" : "AVAX")}"));
-        OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, tokenUpdate));
-        OnMessage(new TransactionExecuted(executing, true));
+        OnMessage(new WalletBalanceUpdated(set, nativeUpdate, tokenUpdate));
+        OnMessage(new TransactionExecuted(set, true));
     }
 
-    private void BridgeToken(TransactionExecuting executing)
+    private void BridgeToken(MessageCollection<TransactionExecuting, GasEstimated> set)
     {
         if (latestUpdate == null)
         {
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
         
-        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == executing.BlockchainName);
-        DataUpdate targetData = latestUpdate.Updates.First(d => d.BlockchainName != executing.BlockchainName);
-        object[] parameters = executing.Parameters;
+        DataUpdate data = latestUpdate.Updates.First(d => d.BlockchainName == set.Message1.BlockchainName);
+        DataUpdate targetData = latestUpdate.Updates.First(d => d.BlockchainName != set.Message1.BlockchainName);
+        object[] parameters = set.Message1.Parameters;
         bool isStable = ((string)parameters[1]).Equals(data.BlockchainName switch
         {
             BlockchainName.Bsc => ConfigurationManager.AppSettings["BscStableCoinId"],
@@ -232,8 +229,14 @@ public class SimulationBlockchainExecuter : Agent
         }, StringComparison.OrdinalIgnoreCase);
         double gasCosts = data.BlockchainName switch
         {
-            BlockchainName.Bsc => celerBridgeBscGasCosts,
-            BlockchainName.Avalanche => celerBridgeAvalancheGasCosts,
+            BlockchainName.Bsc => set.Message2.GasEstimation.BnbSingleBridgeAmount,
+            BlockchainName.Avalanche => set.Message2.GasEstimation.AvaxSingleBridgeAmount,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        double celerBridgeCosts = data.BlockchainName switch
+        {
+            BlockchainName.Bsc => set.Message2.GasEstimation.BscBridgeFee,
+            BlockchainName.Avalanche => set.Message2.GasEstimation.AvalancheBridgeFee,
             _ => throw new ArgumentOutOfRangeException()
         };
         
@@ -245,7 +248,7 @@ public class SimulationBlockchainExecuter : Agent
         {
             nativeUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                    TokenType.Native,
-                                                   data.AccountBalance - gasCosts / data.NativePrice);
+                                                   data.AccountBalance - gasCosts);
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[2], data.StableDecimals);
             sourceTokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                         TokenType.Stable,
@@ -258,7 +261,7 @@ public class SimulationBlockchainExecuter : Agent
         {
             nativeUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                    TokenType.Native,
-                                                   data.AccountBalance - gasCosts / data.NativePrice);
+                                                   data.AccountBalance - gasCosts);
             amount = (double)Web3.Convert.FromWei((BigInteger)parameters[2], data.UnstableDecimals);
             sourceTokenUpdate = new WalletBalanceUpdate(data.BlockchainName,
                                                         TokenType.Unstable,
@@ -273,15 +276,15 @@ public class SimulationBlockchainExecuter : Agent
             sourceTokenUpdate.NewBalance < 0 ||
             targetTokenUpdate.NewBalance < 0)
         {
-            OnMessage(new ImportantNotice(executing, $"Transaction failed because at least one balance would be negative: Source Token - {sourceTokenUpdate}; Native - {nativeUpdate}; Target Token - {targetTokenUpdate}"));
-            OnMessage(new TransactionExecuted(executing, false));
+            OnMessage(new ImportantNotice(set, $"Transaction failed because at least one balance would be negative: Source Token - {sourceTokenUpdate}; Native - {nativeUpdate}; Target Token - {targetTokenUpdate}"));
+            OnMessage(new TransactionExecuted(set, false));
             return;
         }
 
-        OnMessage(new ImportantNotice(executing, $"Bridging token. ETA: {DateTime.Now+new TimeSpan(0,0,0,0,celerBridgeDuration):HH:mm:ss}"));
-        OnMessage(new WalletBalanceUpdated(executing, nativeUpdate, sourceTokenUpdate));
-        OnMessage(new TransactionExecuted(executing, true));
-        Thread.Sleep(executing.BlockchainName switch
+        OnMessage(new ImportantNotice(set, $"Bridging token. ETA: {DateTime.Now+new TimeSpan(0,0,0,0,celerBridgeDuration):HH:mm:ss}"));
+        OnMessage(new WalletBalanceUpdated(set, nativeUpdate, sourceTokenUpdate));
+        OnMessage(new TransactionExecuted(set, true));
+        Thread.Sleep(set.Message1.BlockchainName switch
         {
             BlockchainName.Bsc => celerBridgeDuration,
             BlockchainName.Avalanche => celerBridgeDuration,
@@ -307,11 +310,10 @@ public class SimulationBlockchainExecuter : Agent
             return;
         }
 
-        TransactionExecuting executing = messageData.Get<TransactionExecuting>();
-        HandleTransaction(executing);
+        collector.Push(messageData);
     }
 
-    private void HandleTransaction(TransactionExecuting executing)
+    private void HandleTransaction(MessageCollection<TransactionExecuting, GasEstimated> set)
     {
         int untilError = Interlocked.Decrement(ref transactionsUntilError);
         switch (untilError)
@@ -320,32 +322,32 @@ public class SimulationBlockchainExecuter : Agent
                 transactionsUntilError++;
                 break;
             case 0:
-                OnMessage(new ImportantNotice(executing, "Simulated transaction error."));
-                OnMessage(new TransactionExecuted(executing, false));
-                OnMessage(new TransactionsUntilErrorChanged(executing, 0));
+                OnMessage(new ImportantNotice(set, "Simulated transaction error."));
+                OnMessage(new TransactionExecuted(set, false));
+                OnMessage(new TransactionsUntilErrorChanged(set, 0));
                 return;
         }
 
-        if (executing.ContractAddress.Equals(pancakeSwapRouterAddress, StringComparison.OrdinalIgnoreCase) ||
-            executing.ContractAddress.Equals(traderJoeRouterAddress, StringComparison.OrdinalIgnoreCase))
+        if (set.Message1.ContractAddress.Equals(pancakeSwapRouterAddress, StringComparison.OrdinalIgnoreCase) ||
+            set.Message1.ContractAddress.Equals(traderJoeRouterAddress, StringComparison.OrdinalIgnoreCase))
         {
-            switch (executing.FunctionName)
+            switch (set.Message1.FunctionName)
             {
                 case "swapExactTokensForTokens":
-                    TradeTokenToToken(executing);
+                    TradeTokenToToken(set);
                     break;
                 case "swapExactTokensForETH":
-                    TradeTokenToNative(executing);
+                    TradeTokenToNative(set);
                     break;
                 default:
                     throw new InvalidOperationException("Not implemented.");
             }
         }
-        else if ((executing.ContractAddress.Equals(bscCelerBridgeAddress, StringComparison.OrdinalIgnoreCase) ||
-                  executing.ContractAddress.Equals(avalancheCelerBridgeAddress, StringComparison.OrdinalIgnoreCase)) &&
-                 executing.FunctionName == "send")
+        else if ((set.Message1.ContractAddress.Equals(bscCelerBridgeAddress, StringComparison.OrdinalIgnoreCase) ||
+                  set.Message1.ContractAddress.Equals(avalancheCelerBridgeAddress, StringComparison.OrdinalIgnoreCase)) &&
+                 set.Message1.FunctionName == "send")
         {
-            BridgeToken(executing);
+            BridgeToken(set);
         }
         else
         {
