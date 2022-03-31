@@ -22,7 +22,7 @@ public static class Extensions
 
     public static double CalculateActualProfit(this double buyVolume, double sellAmount, Liquidity buyLiquidity,
                                                Liquidity sellLiquidity,
-                                               double liquidityProviderFee, double bridgeFee)
+                                               double liquidityProviderFee, double gasEstimation)
     {
         (double buyTokenAmount, double buyUsdPaired, _, _) = buyLiquidity;
         (double sellTokenAmount, double sellUsdPaired, _, _) = sellLiquidity;
@@ -31,15 +31,14 @@ public static class Extensions
         double newUsd = buyUsdPaired + buyVolume*(1-liquidityProviderFee);
         double newToken = buyTokenAmount * buyUsdPaired / newUsd;
         double tokenReceived = buyTokenAmount - newToken;
-        tokenReceived -= bridgeFee/(newUsd/newToken);
             
         //simulate sell
         newToken = sellTokenAmount + sellAmount*(1-liquidityProviderFee);
         newUsd = sellTokenAmount * sellUsdPaired / newToken;
-        double soldValue = sellUsdPaired - newUsd - bridgeFee;
+        double soldValue = sellUsdPaired - newUsd;
         double boughtValue = tokenReceived * newUsd / newToken;
 
-        return boughtValue + soldValue - buyVolume - sellAmount * sellLiquidity.Price;
+        return boughtValue + soldValue - buyVolume - sellAmount * sellLiquidity.Price - gasEstimation;
     }
     
     public static double CalculateProfit(this double volume, Liquidity buyLiquidity, Liquidity sellLiquidity, 

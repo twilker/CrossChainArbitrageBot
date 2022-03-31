@@ -33,6 +33,8 @@ public class WindowViewModel : INotifyPropertyChanged
     private bool isLoopOnAuto;
     private LoopState loopState;
     private double optimalTokenAmountPrice;
+    private double gasEstimation;
+    private int minimalProfit;
 
     public double Spread
     {
@@ -85,6 +87,17 @@ public class WindowViewModel : INotifyPropertyChanged
         {
             if (value.Equals(currentProfit)) return;
             currentProfit = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double GasEstimation
+    {
+        get => gasEstimation;
+        set
+        {
+            if (value.Equals(gasEstimation)) return;
+            gasEstimation = value;
             OnPropertyChanged();
         }
     }
@@ -261,6 +274,17 @@ public class WindowViewModel : INotifyPropertyChanged
         {
             if (value == transactionPercentage) return;
             transactionPercentage = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public int MinimalProfit
+    {
+        get => minimalProfit;
+        set
+        {
+            if (value == minimalProfit) return;
+            minimalProfit = value;
             OnPropertyChanged();
         }
     }

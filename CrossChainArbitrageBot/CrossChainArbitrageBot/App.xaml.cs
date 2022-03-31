@@ -94,6 +94,7 @@ public partial class App : Application
         };
         messageBoard.Publish(new BlockchainConnected(new BlockchainConnection(BlockchainName.Bsc, bscConnector, bscAbis),
                                                      new BlockchainConnection(BlockchainName.Avalanche, avaxConnector, avaxAbis)));
+        messageBoard.Publish(new MinimalProfitChanged(5));
     }
 
     private void ConfigureLogging()

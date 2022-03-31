@@ -7,20 +7,33 @@ using CrossChainArbitrageBot.Base.Models;
 namespace CrossChainArbitrageBot.Base.Agents;
 
 [Intercepts(typeof(DataUpdated))]
+[Consumes(typeof(GasEstimated))]
+[Consumes(typeof(MinimalProfitChanged))]
 public class DataCalculationEngine : InterceptorAgent
 {
     private readonly double liquidityProviderFee;
-    private readonly double bridgeFee;
-    private readonly double minimalProfit;
+    
+    private double minimalProfit;
+    private GasEstimation estimation;
 
     public DataCalculationEngine(IMessageBoard messageBoard) : base(messageBoard)
     {
         liquidityProviderFee = double.Parse(ConfigurationManager.AppSettings["LiquidityProviderFee"] ??
                                             throw new ConfigurationErrorsException("LiquidityProviderFee not found."));
-        bridgeFee = double.Parse(ConfigurationManager.AppSettings["BridgeCostsForProfitCalculation"] ??
-                                 throw new ConfigurationErrorsException("BridgeCostsForProfitCalculation not found."));
-        minimalProfit = double.Parse(ConfigurationManager.AppSettings["MinimalProfit"] ??
-                                 throw new ConfigurationErrorsException("MinimalProfit not found."));
+        minimalProfit = 5;
+    }
+
+    protected override void ExecuteCore(Message messageData)
+    {
+        if (messageData.TryGet(out GasEstimated estimated))
+        {
+            estimation = estimated.GasEstimation;
+            return;
+        }
+        if (messageData.TryGet(out MinimalProfitChanged profitChanged))
+        {
+            minimalProfit = profitChanged.MinimalProfit;
+        }
     }
 
     protected override InterceptionAction InterceptCore(Message messageData)
@@ -47,7 +60,7 @@ public class DataCalculationEngine : InterceptorAgent
             bscUpdate.UnstableAmount + avalancheUpdate.UnstableAmount,
             buyLiquidity,
             sellLiquidity,
-            liquidityProviderFee, bridgeFee);
+            liquidityProviderFee, estimation.GasCost);
 
         SpreadDataUpdated.Decorate(updated, spread, optimalTokenAmount.Spread, optimalTokenAmount.TokenAmount,
                                    currentProfit);
@@ -144,7 +157,7 @@ public class DataCalculationEngine : InterceptorAgent
                 ? avalancheLiquidity
                 : bscLiquidity,
             liquidityProviderFee,
-            bridgeFee);
+            estimation.GasCost);
         return new SpreadProfit(maximumVolumeToTargetSpread, profitByMaximumVolume, targetSpread);
     }
 

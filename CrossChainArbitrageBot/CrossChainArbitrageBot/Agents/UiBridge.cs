@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Agents.Net;
@@ -10,6 +11,8 @@ namespace CrossChainArbitrageBot.Agents;
 
 [Consumes(typeof(MainWindowCreated))]
 [Consumes(typeof(DataUpdated))]
+[Consumes(typeof(GasEstimated))]
+[Consumes(typeof(MinimalProfitChanged))]
 [Consumes(typeof(ImportantNotice))]
 [Consumes(typeof(LoopStateChanged))]
 internal class UiBridge : Agent
@@ -45,6 +48,22 @@ internal class UiBridge : Agent
             mainWindow!.Dispatcher.Invoke(() =>
             {
                 UpdateViewModel(updated);
+            }, DispatcherPriority.Send);
+            return;
+        }
+        if (messageData.TryGet(out GasEstimated estimated))
+        {
+            mainWindow!.Dispatcher.Invoke(() =>
+            {
+                ((WindowViewModel)mainWindow.DataContext).GasEstimation = estimated.GasEstimation.GasCost;
+            }, DispatcherPriority.Send);
+            return;
+        }
+        if (messageData.TryGet(out MinimalProfitChanged profitChanged))
+        {
+            mainWindow!.Dispatcher.Invoke(() =>
+            {
+                ((WindowViewModel)mainWindow.DataContext).MinimalProfit = profitChanged.MinimalProfit;
             }, DispatcherPriority.Send);
             return;
         }
@@ -115,12 +134,22 @@ internal class UiBridge : Agent
             WindowViewModel viewModel = new();
             mainWindow.DataContext = viewModel;
             viewModel.TransactionInitiated += OnTransactionInitiated;
+            viewModel.PropertyChanged += OnPropertyChanged;
         });
     }
 
     private void UnsubscribedFromEvents()
     {
         ((WindowViewModel)mainWindow!.DataContext).TransactionInitiated -= OnTransactionInitiated;
+        ((WindowViewModel)mainWindow!.DataContext).PropertyChanged -= OnPropertyChanged;
+    }
+
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is WindowViewModel viewModel && e.PropertyName == nameof(WindowViewModel.MinimalProfit))
+        {
+            OnMessage(new MinimalProfitChanged(mainWindowCreated!, viewModel.MinimalProfit));
+        }
     }
 
     private void OnTransactionInitiated(object? sender, TransactionEventArgs e)

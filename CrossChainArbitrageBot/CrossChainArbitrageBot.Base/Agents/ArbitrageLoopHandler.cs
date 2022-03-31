@@ -8,6 +8,8 @@ namespace CrossChainArbitrageBot.Base.Agents;
 
 [Consumes(typeof(LoopStarted))]
 [Consumes(typeof(DataUpdated))]
+[Consumes(typeof(GasEstimated))]
+[Consumes(typeof(MinimalProfitChanged))]
 [Consumes(typeof(TransactionFinished))]
 public class ArbitrageLoopHandler : Agent
 {
@@ -16,26 +18,30 @@ public class ArbitrageLoopHandler : Agent
     private DataUpdate? bscUpdate;
     private DataUpdate? avalancheUpdate;
     private InternalLoopState loopState;
-    private readonly double minimalProfit;
     private readonly ConcurrentHashSet<TransactionStarted> waitingTransactions = new();
-    private readonly double liquidityProviderFee;
-    private readonly double bridgeFee;
+
+    private GasEstimation estimation;
+    private double minimalProfit;
 
     private const double MinimalGasPreLoop = 3; 
 
     public ArbitrageLoopHandler(IMessageBoard messageBoard) : base(messageBoard)
     {
         loopState = new InternalLoopState(LoopState.Stopped, LoopKind.None);
-        minimalProfit = double.Parse(ConfigurationManager.AppSettings["MinimalProfit"] ??
-                                     throw new ConfigurationErrorsException("MinimalProfit not configured."));
-        liquidityProviderFee = double.Parse(ConfigurationManager.AppSettings["LiquidityProviderFee"] ??
-                                            throw new ConfigurationErrorsException("LiquidityProviderFee not found."));
-        bridgeFee = double.Parse(ConfigurationManager.AppSettings["BridgeCostsForProfitCalculation"] ??
-                                 throw new ConfigurationErrorsException("BridgeCostsForProfitCalculation not found."));
     }
 
     protected override void ExecuteCore(Message messageData)
     {
+        if (messageData.TryGet(out GasEstimated estimated))
+        {
+            estimation = estimated.GasEstimation;
+            return;
+        }
+        if (messageData.TryGet(out MinimalProfitChanged profitChanged))
+        {
+            minimalProfit = profitChanged.MinimalProfit;
+            return;
+        }
         if (messageData.TryGet(out DataUpdated updated))
         {
             latestData = updated;
@@ -295,14 +301,14 @@ public class ArbitrageLoopHandler : Agent
         List<TransactionStarted> preparationTransactions = new();
 
         if (BuySide.StableAmount < OptimalBuyVolume &&
-            SellSide.StableAmount > bridgeFee * 10)
+            SellSide.StableAmount > estimation.GasCost * 5)
         {
             preparationTransactions.Add(new TransactionStarted(messageData, 1,
                                                                SellSide.BlockchainName,
                                                                TransactionType.BridgeStable));
         }
 
-        if (BuySide.UnstableAmount * BuySide.UnstablePrice > bridgeFee*10)
+        if (BuySide.UnstableAmount * BuySide.UnstablePrice > estimation.GasCost*5)
         {
             preparationTransactions.Add(new TransactionStarted(messageData, 1,
                                                                BuySide.BlockchainName,
